@@ -1,0 +1,23 @@
+family,scenario,outflow_gbp,outflow_share,payables_included_gbp
+Concentration,Top 1 clients redeem in full,63688680.266640134,0.02122956003983976,0.0
+Concentration,Top 5 clients redeem in full,239385709.60684338,0.07979523635128746,0.0
+Concentration,Top 10 clients redeem in full,400797157.99605817,0.1335990523567389,0.0
+Concentration,Top 20 clients redeem in full,611609070.6154654,0.20386968973421615,0.0
+Concentration,Top 50 clients redeem in full,954041797.0392816,0.318013931611815,0.0
+Historical replay,Worst 1-day net outflow (ended 2020-12-01),35371902.421772115,0.011790634113354341,0.0
+Historical replay,Worst 5-day net outflow (ended 2013-03-22),62717369.06033708,0.020905789638486653,0.0
+Historical replay,Worst 20-day net outflow (ended 2012-03-30),112511277.84008475,0.03750375919339457,0.0
+Named episode,Global financial crisis: worst 5-day net outflow,58516993.98083582,0.019505664615220523,0.0
+Named episode,Global financial crisis: worst 20-day net outflow,100574914.89206989,0.03352497155324728,0.0
+Named episode,Euro-area debt crisis: worst 5-day net outflow,23833774.214565378,0.00794459138650312,0.0
+Named episode,Euro-area debt crisis: worst 20-day net outflow,27035093.251032896,0.009011697729527278,0.0
+Named episode,COVID-19 market shock: worst 5-day net outflow,55929602.92658236,0.01864320093246166,0.0
+Named episode,COVID-19 market shock: worst 20-day net outflow,91322592.10979903,0.030440863966281283,0.0
+Named episode,UK gilt / LDI crisis: worst 5-day net outflow,17202493.549581062,0.005734164503281102,0.0
+Named episode,UK gilt / LDI crisis: worst 20-day net outflow,15559913.668050954,0.005186637877369185,0.0
+Segment tails,"1-day 99th pct, all segments together (ρ=1)",15705098.3679175,0.005235032777212908,0.0
+Segment tails,"1-day 99th pct, historical stress correlation",11734251.090027101,0.003911417020973661,0.0
+Segment tails,"5-day 99th pct, all segments together (ρ=1)",57288729.93528703,0.019096243267650023,0.0
+Segment tails,"5-day 99th pct, historical stress correlation",43053236.73031268,0.014351078876953235,0.0
+Combined,Worst 5-day replay + top 10 full exit + known payables,475423948.17639524,0.15847464902605532,11909421.12
+Combined,5-day segment tails (ρ=1) + top 10 full exit + known payables,469995309.0513452,0.15666510265521869,11909421.12

@@ -1,0 +1,769 @@
+frequency,basis,regime,segment_a,segment_b,r
+daily,raw,all,Large active holders,Large active holders,1.0
+daily,raw,all,Large active holders,Low-activity holders,-0.020280485658461318
+daily,raw,all,Large active holders,March (year-end) redeemers,0.24225931684924115
+daily,raw,all,Large active holders,Month-end traders,0.17336465760134812
+daily,raw,all,Large active holders,Net withdrawers,0.28932900831607716
+daily,raw,all,Large active holders,Rare traders,0.01544976489404155
+daily,raw,all,Large active holders,Steady accumulators,0.2351860414473191
+daily,raw,all,Large active holders,Year-end redeemers,0.53766432367052
+daily,raw,all,Low-activity holders,Large active holders,-0.020280485658461318
+daily,raw,all,Low-activity holders,Low-activity holders,1.0
+daily,raw,all,Low-activity holders,March (year-end) redeemers,0.012102300329764311
+daily,raw,all,Low-activity holders,Month-end traders,0.0023220689517764233
+daily,raw,all,Low-activity holders,Net withdrawers,-0.00789371102024443
+daily,raw,all,Low-activity holders,Rare traders,-0.00017583363094392427
+daily,raw,all,Low-activity holders,Steady accumulators,-0.0251730404429325
+daily,raw,all,Low-activity holders,Year-end redeemers,-0.01794686983678429
+daily,raw,all,March (year-end) redeemers,Large active holders,0.24225931684924115
+daily,raw,all,March (year-end) redeemers,Low-activity holders,0.012102300329764311
+daily,raw,all,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,raw,all,March (year-end) redeemers,Month-end traders,0.01972529492087014
+daily,raw,all,March (year-end) redeemers,Net withdrawers,0.0925552140188794
+daily,raw,all,March (year-end) redeemers,Rare traders,0.0039478914716692725
+daily,raw,all,March (year-end) redeemers,Steady accumulators,0.10590270742651885
+daily,raw,all,March (year-end) redeemers,Year-end redeemers,0.26037367030017905
+daily,raw,all,Month-end traders,Large active holders,0.17336465760134812
+daily,raw,all,Month-end traders,Low-activity holders,0.0023220689517764233
+daily,raw,all,Month-end traders,March (year-end) redeemers,0.01972529492087014
+daily,raw,all,Month-end traders,Month-end traders,1.0
+daily,raw,all,Month-end traders,Net withdrawers,0.15202199003116082
+daily,raw,all,Month-end traders,Rare traders,0.0022046064284180094
+daily,raw,all,Month-end traders,Steady accumulators,0.12605250090674272
+daily,raw,all,Month-end traders,Year-end redeemers,0.15788477205580484
+daily,raw,all,Net withdrawers,Large active holders,0.28932900831607716
+daily,raw,all,Net withdrawers,Low-activity holders,-0.00789371102024443
+daily,raw,all,Net withdrawers,March (year-end) redeemers,0.0925552140188794
+daily,raw,all,Net withdrawers,Month-end traders,0.15202199003116082
+daily,raw,all,Net withdrawers,Net withdrawers,1.0
+daily,raw,all,Net withdrawers,Rare traders,0.004586160482229214
+daily,raw,all,Net withdrawers,Steady accumulators,0.33335660616532176
+daily,raw,all,Net withdrawers,Year-end redeemers,0.2033328376377977
+daily,raw,all,Rare traders,Large active holders,0.01544976489404155
+daily,raw,all,Rare traders,Low-activity holders,-0.00017583363094392427
+daily,raw,all,Rare traders,March (year-end) redeemers,0.0039478914716692725
+daily,raw,all,Rare traders,Month-end traders,0.0022046064284180094
+daily,raw,all,Rare traders,Net withdrawers,0.004586160482229214
+daily,raw,all,Rare traders,Rare traders,1.0
+daily,raw,all,Rare traders,Steady accumulators,-0.009649268516934244
+daily,raw,all,Rare traders,Year-end redeemers,0.01626587888617581
+daily,raw,all,Steady accumulators,Large active holders,0.2351860414473191
+daily,raw,all,Steady accumulators,Low-activity holders,-0.0251730404429325
+daily,raw,all,Steady accumulators,March (year-end) redeemers,0.10590270742651885
+daily,raw,all,Steady accumulators,Month-end traders,0.12605250090674272
+daily,raw,all,Steady accumulators,Net withdrawers,0.33335660616532176
+daily,raw,all,Steady accumulators,Rare traders,-0.009649268516934244
+daily,raw,all,Steady accumulators,Steady accumulators,1.0
+daily,raw,all,Steady accumulators,Year-end redeemers,0.15483167590412902
+daily,raw,all,Year-end redeemers,Large active holders,0.53766432367052
+daily,raw,all,Year-end redeemers,Low-activity holders,-0.01794686983678429
+daily,raw,all,Year-end redeemers,March (year-end) redeemers,0.26037367030017905
+daily,raw,all,Year-end redeemers,Month-end traders,0.15788477205580484
+daily,raw,all,Year-end redeemers,Net withdrawers,0.2033328376377977
+daily,raw,all,Year-end redeemers,Rare traders,0.01626587888617581
+daily,raw,all,Year-end redeemers,Steady accumulators,0.15483167590412902
+daily,raw,all,Year-end redeemers,Year-end redeemers,1.0
+daily,raw,calm,Large active holders,Large active holders,1.0
+daily,raw,calm,Large active holders,Low-activity holders,-0.014977909760217208
+daily,raw,calm,Large active holders,March (year-end) redeemers,0.22534499516550818
+daily,raw,calm,Large active holders,Month-end traders,0.17157595401153403
+daily,raw,calm,Large active holders,Net withdrawers,0.2806497944736866
+daily,raw,calm,Large active holders,Rare traders,0.004757878850155105
+daily,raw,calm,Large active holders,Steady accumulators,0.2368209777505193
+daily,raw,calm,Large active holders,Year-end redeemers,0.5514936776119158
+daily,raw,calm,Low-activity holders,Large active holders,-0.014977909760217208
+daily,raw,calm,Low-activity holders,Low-activity holders,1.0
+daily,raw,calm,Low-activity holders,March (year-end) redeemers,0.010390797089026951
+daily,raw,calm,Low-activity holders,Month-end traders,0.0030983460860224484
+daily,raw,calm,Low-activity holders,Net withdrawers,-0.007526979329950093
+daily,raw,calm,Low-activity holders,Rare traders,-0.0017592411918983812
+daily,raw,calm,Low-activity holders,Steady accumulators,-0.029881133633198192
+daily,raw,calm,Low-activity holders,Year-end redeemers,-0.01903624649512596
+daily,raw,calm,March (year-end) redeemers,Large active holders,0.22534499516550818
+daily,raw,calm,March (year-end) redeemers,Low-activity holders,0.010390797089026951
+daily,raw,calm,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,raw,calm,March (year-end) redeemers,Month-end traders,0.01441693782536314
+daily,raw,calm,March (year-end) redeemers,Net withdrawers,0.08057318329715872
+daily,raw,calm,March (year-end) redeemers,Rare traders,-0.0005150802507561624
+daily,raw,calm,March (year-end) redeemers,Steady accumulators,0.09804707289878596
+daily,raw,calm,March (year-end) redeemers,Year-end redeemers,0.25576938406592586
+daily,raw,calm,Month-end traders,Large active holders,0.17157595401153403
+daily,raw,calm,Month-end traders,Low-activity holders,0.0030983460860224484
+daily,raw,calm,Month-end traders,March (year-end) redeemers,0.01441693782536314
+daily,raw,calm,Month-end traders,Month-end traders,1.0
+daily,raw,calm,Month-end traders,Net withdrawers,0.14622634222342676
+daily,raw,calm,Month-end traders,Rare traders,0.0045155466888955244
+daily,raw,calm,Month-end traders,Steady accumulators,0.14166373957884193
+daily,raw,calm,Month-end traders,Year-end redeemers,0.15898213791159518
+daily,raw,calm,Net withdrawers,Large active holders,0.2806497944736866
+daily,raw,calm,Net withdrawers,Low-activity holders,-0.007526979329950093
+daily,raw,calm,Net withdrawers,March (year-end) redeemers,0.08057318329715872
+daily,raw,calm,Net withdrawers,Month-end traders,0.14622634222342676
+daily,raw,calm,Net withdrawers,Net withdrawers,1.0
+daily,raw,calm,Net withdrawers,Rare traders,0.0010522425820990024
+daily,raw,calm,Net withdrawers,Steady accumulators,0.3382894543698452
+daily,raw,calm,Net withdrawers,Year-end redeemers,0.19818179702792493
+daily,raw,calm,Rare traders,Large active holders,0.004757878850155105
+daily,raw,calm,Rare traders,Low-activity holders,-0.0017592411918983812
+daily,raw,calm,Rare traders,March (year-end) redeemers,-0.0005150802507561624
+daily,raw,calm,Rare traders,Month-end traders,0.0045155466888955244
+daily,raw,calm,Rare traders,Net withdrawers,0.0010522425820990024
+daily,raw,calm,Rare traders,Rare traders,1.0
+daily,raw,calm,Rare traders,Steady accumulators,-0.007856726211387938
+daily,raw,calm,Rare traders,Year-end redeemers,0.009456814724570542
+daily,raw,calm,Steady accumulators,Large active holders,0.2368209777505193
+daily,raw,calm,Steady accumulators,Low-activity holders,-0.029881133633198192
+daily,raw,calm,Steady accumulators,March (year-end) redeemers,0.09804707289878596
+daily,raw,calm,Steady accumulators,Month-end traders,0.14166373957884193
+daily,raw,calm,Steady accumulators,Net withdrawers,0.3382894543698452
+daily,raw,calm,Steady accumulators,Rare traders,-0.007856726211387938
+daily,raw,calm,Steady accumulators,Steady accumulators,1.0
+daily,raw,calm,Steady accumulators,Year-end redeemers,0.15530812218579995
+daily,raw,calm,Year-end redeemers,Large active holders,0.5514936776119158
+daily,raw,calm,Year-end redeemers,Low-activity holders,-0.01903624649512596
+daily,raw,calm,Year-end redeemers,March (year-end) redeemers,0.25576938406592586
+daily,raw,calm,Year-end redeemers,Month-end traders,0.15898213791159518
+daily,raw,calm,Year-end redeemers,Net withdrawers,0.19818179702792493
+daily,raw,calm,Year-end redeemers,Rare traders,0.009456814724570542
+daily,raw,calm,Year-end redeemers,Steady accumulators,0.15530812218579995
+daily,raw,calm,Year-end redeemers,Year-end redeemers,1.0
+daily,raw,stress,Large active holders,Large active holders,1.0
+daily,raw,stress,Large active holders,Low-activity holders,-0.04126684659269999
+daily,raw,stress,Large active holders,March (year-end) redeemers,0.31021510012435793
+daily,raw,stress,Large active holders,Month-end traders,0.18258559190542836
+daily,raw,stress,Large active holders,Net withdrawers,0.38068776479550726
+daily,raw,stress,Large active holders,Rare traders,0.05293427197530746
+daily,raw,stress,Large active holders,Steady accumulators,0.22801899227238123
+daily,raw,stress,Large active holders,Year-end redeemers,0.47977174087600244
+daily,raw,stress,Low-activity holders,Large active holders,-0.04126684659269999
+daily,raw,stress,Low-activity holders,Low-activity holders,1.0
+daily,raw,stress,Low-activity holders,March (year-end) redeemers,0.018556303261172573
+daily,raw,stress,Low-activity holders,Month-end traders,-0.0015105358572006348
+daily,raw,stress,Low-activity holders,Net withdrawers,-0.009285381966102419
+daily,raw,stress,Low-activity holders,Rare traders,0.005053081790154164
+daily,raw,stress,Low-activity holders,Steady accumulators,-0.006295245827908481
+daily,raw,stress,Low-activity holders,Year-end redeemers,-0.014570253341623646
+daily,raw,stress,March (year-end) redeemers,Large active holders,0.31021510012435793
+daily,raw,stress,March (year-end) redeemers,Low-activity holders,0.018556303261172573
+daily,raw,stress,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,raw,stress,March (year-end) redeemers,Month-end traders,0.041492820859862584
+daily,raw,stress,March (year-end) redeemers,Net withdrawers,0.18451427949920307
+daily,raw,stress,March (year-end) redeemers,Rare traders,0.01853953711585903
+daily,raw,stress,March (year-end) redeemers,Steady accumulators,0.1370918191305124
+daily,raw,stress,March (year-end) redeemers,Year-end redeemers,0.28218385993376
+daily,raw,stress,Month-end traders,Large active holders,0.18258559190542836
+daily,raw,stress,Month-end traders,Low-activity holders,-0.0015105358572006348
+daily,raw,stress,Month-end traders,March (year-end) redeemers,0.041492820859862584
+daily,raw,stress,Month-end traders,Month-end traders,1.0
+daily,raw,stress,Month-end traders,Net withdrawers,0.21860894384624385
+daily,raw,stress,Month-end traders,Rare traders,-0.005820115816235482
+daily,raw,stress,Month-end traders,Steady accumulators,0.05983734750874673
+daily,raw,stress,Month-end traders,Year-end redeemers,0.1496235370705085
+daily,raw,stress,Net withdrawers,Large active holders,0.38068776479550726
+daily,raw,stress,Net withdrawers,Low-activity holders,-0.009285381966102419
+daily,raw,stress,Net withdrawers,March (year-end) redeemers,0.18451427949920307
+daily,raw,stress,Net withdrawers,Month-end traders,0.21860894384624385
+daily,raw,stress,Net withdrawers,Net withdrawers,1.0
+daily,raw,stress,Net withdrawers,Rare traders,0.025407784653759598
+daily,raw,stress,Net withdrawers,Steady accumulators,0.3373481062810558
+daily,raw,stress,Net withdrawers,Year-end redeemers,0.2750570609971157
+daily,raw,stress,Rare traders,Large active holders,0.05293427197530746
+daily,raw,stress,Rare traders,Low-activity holders,0.005053081790154164
+daily,raw,stress,Rare traders,March (year-end) redeemers,0.01853953711585903
+daily,raw,stress,Rare traders,Month-end traders,-0.005820115816235482
+daily,raw,stress,Rare traders,Net withdrawers,0.025407784653759598
+daily,raw,stress,Rare traders,Rare traders,1.0
+daily,raw,stress,Rare traders,Steady accumulators,-0.016028028330412353
+daily,raw,stress,Rare traders,Year-end redeemers,0.04198589994027432
+daily,raw,stress,Steady accumulators,Large active holders,0.22801899227238123
+daily,raw,stress,Steady accumulators,Low-activity holders,-0.006295245827908481
+daily,raw,stress,Steady accumulators,March (year-end) redeemers,0.1370918191305124
+daily,raw,stress,Steady accumulators,Month-end traders,0.05983734750874673
+daily,raw,stress,Steady accumulators,Net withdrawers,0.3373481062810558
+daily,raw,stress,Steady accumulators,Rare traders,-0.016028028330412353
+daily,raw,stress,Steady accumulators,Steady accumulators,1.0
+daily,raw,stress,Steady accumulators,Year-end redeemers,0.15466112638893334
+daily,raw,stress,Year-end redeemers,Large active holders,0.47977174087600244
+daily,raw,stress,Year-end redeemers,Low-activity holders,-0.014570253341623646
+daily,raw,stress,Year-end redeemers,March (year-end) redeemers,0.28218385993376
+daily,raw,stress,Year-end redeemers,Month-end traders,0.1496235370705085
+daily,raw,stress,Year-end redeemers,Net withdrawers,0.2750570609971157
+daily,raw,stress,Year-end redeemers,Rare traders,0.04198589994027432
+daily,raw,stress,Year-end redeemers,Steady accumulators,0.15466112638893334
+daily,raw,stress,Year-end redeemers,Year-end redeemers,1.0
+daily,deseasonalised,all,Large active holders,Large active holders,1.0
+daily,deseasonalised,all,Large active holders,Low-activity holders,-0.015242728708593872
+daily,deseasonalised,all,Large active holders,March (year-end) redeemers,0.09067148529944935
+daily,deseasonalised,all,Large active holders,Month-end traders,0.0012982405452304415
+daily,deseasonalised,all,Large active holders,Net withdrawers,0.1881902102548864
+daily,deseasonalised,all,Large active holders,Rare traders,-0.006707370786169296
+daily,deseasonalised,all,Large active holders,Steady accumulators,0.20580863164165777
+daily,deseasonalised,all,Large active holders,Year-end redeemers,0.23073271830304534
+daily,deseasonalised,all,Low-activity holders,Large active holders,-0.015242728708593872
+daily,deseasonalised,all,Low-activity holders,Low-activity holders,1.0
+daily,deseasonalised,all,Low-activity holders,March (year-end) redeemers,0.019930511047715573
+daily,deseasonalised,all,Low-activity holders,Month-end traders,0.011821364731107764
+daily,deseasonalised,all,Low-activity holders,Net withdrawers,-6.920544728199612e-05
+daily,deseasonalised,all,Low-activity holders,Rare traders,-0.00032446773099406616
+daily,deseasonalised,all,Low-activity holders,Steady accumulators,-0.021764734067031527
+daily,deseasonalised,all,Low-activity holders,Year-end redeemers,-0.020939993316553156
+daily,deseasonalised,all,March (year-end) redeemers,Large active holders,0.09067148529944935
+daily,deseasonalised,all,March (year-end) redeemers,Low-activity holders,0.019930511047715573
+daily,deseasonalised,all,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,deseasonalised,all,March (year-end) redeemers,Month-end traders,-0.019798409621934614
+daily,deseasonalised,all,March (year-end) redeemers,Net withdrawers,0.06181920379665925
+daily,deseasonalised,all,March (year-end) redeemers,Rare traders,-0.006080955070532227
+daily,deseasonalised,all,March (year-end) redeemers,Steady accumulators,0.07880482993187571
+daily,deseasonalised,all,March (year-end) redeemers,Year-end redeemers,0.05090752313943723
+daily,deseasonalised,all,Month-end traders,Large active holders,0.0012982405452304415
+daily,deseasonalised,all,Month-end traders,Low-activity holders,0.011821364731107764
+daily,deseasonalised,all,Month-end traders,March (year-end) redeemers,-0.019798409621934614
+daily,deseasonalised,all,Month-end traders,Month-end traders,1.0
+daily,deseasonalised,all,Month-end traders,Net withdrawers,0.01101144105017976
+daily,deseasonalised,all,Month-end traders,Rare traders,-0.012914977294341547
+daily,deseasonalised,all,Month-end traders,Steady accumulators,-0.009460648793933121
+daily,deseasonalised,all,Month-end traders,Year-end redeemers,0.016842148017659826
+daily,deseasonalised,all,Net withdrawers,Large active holders,0.1881902102548864
+daily,deseasonalised,all,Net withdrawers,Low-activity holders,-6.920544728199612e-05
+daily,deseasonalised,all,Net withdrawers,March (year-end) redeemers,0.06181920379665925
+daily,deseasonalised,all,Net withdrawers,Month-end traders,0.01101144105017976
+daily,deseasonalised,all,Net withdrawers,Net withdrawers,1.0
+daily,deseasonalised,all,Net withdrawers,Rare traders,-0.001930951318292151
+daily,deseasonalised,all,Net withdrawers,Steady accumulators,0.19525617123024516
+daily,deseasonalised,all,Net withdrawers,Year-end redeemers,0.1658565286347983
+daily,deseasonalised,all,Rare traders,Large active holders,-0.006707370786169296
+daily,deseasonalised,all,Rare traders,Low-activity holders,-0.00032446773099406616
+daily,deseasonalised,all,Rare traders,March (year-end) redeemers,-0.006080955070532227
+daily,deseasonalised,all,Rare traders,Month-end traders,-0.012914977294341547
+daily,deseasonalised,all,Rare traders,Net withdrawers,-0.001930951318292151
+daily,deseasonalised,all,Rare traders,Rare traders,1.0
+daily,deseasonalised,all,Rare traders,Steady accumulators,-0.010544524165990613
+daily,deseasonalised,all,Rare traders,Year-end redeemers,-0.003079258680046294
+daily,deseasonalised,all,Steady accumulators,Large active holders,0.20580863164165777
+daily,deseasonalised,all,Steady accumulators,Low-activity holders,-0.021764734067031527
+daily,deseasonalised,all,Steady accumulators,March (year-end) redeemers,0.07880482993187571
+daily,deseasonalised,all,Steady accumulators,Month-end traders,-0.009460648793933121
+daily,deseasonalised,all,Steady accumulators,Net withdrawers,0.19525617123024516
+daily,deseasonalised,all,Steady accumulators,Rare traders,-0.010544524165990613
+daily,deseasonalised,all,Steady accumulators,Steady accumulators,1.0
+daily,deseasonalised,all,Steady accumulators,Year-end redeemers,0.13394484446206723
+daily,deseasonalised,all,Year-end redeemers,Large active holders,0.23073271830304534
+daily,deseasonalised,all,Year-end redeemers,Low-activity holders,-0.020939993316553156
+daily,deseasonalised,all,Year-end redeemers,March (year-end) redeemers,0.05090752313943723
+daily,deseasonalised,all,Year-end redeemers,Month-end traders,0.016842148017659826
+daily,deseasonalised,all,Year-end redeemers,Net withdrawers,0.1658565286347983
+daily,deseasonalised,all,Year-end redeemers,Rare traders,-0.003079258680046294
+daily,deseasonalised,all,Year-end redeemers,Steady accumulators,0.13394484446206723
+daily,deseasonalised,all,Year-end redeemers,Year-end redeemers,1.0
+daily,deseasonalised,calm,Large active holders,Large active holders,1.0
+daily,deseasonalised,calm,Large active holders,Low-activity holders,-0.009116826343790936
+daily,deseasonalised,calm,Large active holders,March (year-end) redeemers,0.07911704055358773
+daily,deseasonalised,calm,Large active holders,Month-end traders,-0.005106436764439391
+daily,deseasonalised,calm,Large active holders,Net withdrawers,0.1856923892617554
+daily,deseasonalised,calm,Large active holders,Rare traders,-0.013527314531295428
+daily,deseasonalised,calm,Large active holders,Steady accumulators,0.2098211411188533
+daily,deseasonalised,calm,Large active holders,Year-end redeemers,0.24733884460517114
+daily,deseasonalised,calm,Low-activity holders,Large active holders,-0.009116826343790936
+daily,deseasonalised,calm,Low-activity holders,Low-activity holders,1.0
+daily,deseasonalised,calm,Low-activity holders,March (year-end) redeemers,0.018663725269407197
+daily,deseasonalised,calm,Low-activity holders,Month-end traders,0.014223460589163427
+daily,deseasonalised,calm,Low-activity holders,Net withdrawers,0.0006213750950658647
+daily,deseasonalised,calm,Low-activity holders,Rare traders,-0.0013163187499658847
+daily,deseasonalised,calm,Low-activity holders,Steady accumulators,-0.02808695030986204
+daily,deseasonalised,calm,Low-activity holders,Year-end redeemers,-0.02257413010847891
+daily,deseasonalised,calm,March (year-end) redeemers,Large active holders,0.07911704055358773
+daily,deseasonalised,calm,March (year-end) redeemers,Low-activity holders,0.018663725269407197
+daily,deseasonalised,calm,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,deseasonalised,calm,March (year-end) redeemers,Month-end traders,-0.021224962339175268
+daily,deseasonalised,calm,March (year-end) redeemers,Net withdrawers,0.05108939284289407
+daily,deseasonalised,calm,March (year-end) redeemers,Rare traders,-0.00658783315405966
+daily,deseasonalised,calm,March (year-end) redeemers,Steady accumulators,0.07150107933901925
+daily,deseasonalised,calm,March (year-end) redeemers,Year-end redeemers,0.05523353871559604
+daily,deseasonalised,calm,Month-end traders,Large active holders,-0.005106436764439391
+daily,deseasonalised,calm,Month-end traders,Low-activity holders,0.014223460589163427
+daily,deseasonalised,calm,Month-end traders,March (year-end) redeemers,-0.021224962339175268
+daily,deseasonalised,calm,Month-end traders,Month-end traders,1.0
+daily,deseasonalised,calm,Month-end traders,Net withdrawers,0.005231773672452536
+daily,deseasonalised,calm,Month-end traders,Rare traders,-0.005788165016439323
+daily,deseasonalised,calm,Month-end traders,Steady accumulators,-0.0007500266947586115
+daily,deseasonalised,calm,Month-end traders,Year-end redeemers,0.016923242695788005
+daily,deseasonalised,calm,Net withdrawers,Large active holders,0.1856923892617554
+daily,deseasonalised,calm,Net withdrawers,Low-activity holders,0.0006213750950658647
+daily,deseasonalised,calm,Net withdrawers,March (year-end) redeemers,0.05108939284289407
+daily,deseasonalised,calm,Net withdrawers,Month-end traders,0.005231773672452536
+daily,deseasonalised,calm,Net withdrawers,Net withdrawers,1.0
+daily,deseasonalised,calm,Net withdrawers,Rare traders,-0.002151206100341258
+daily,deseasonalised,calm,Net withdrawers,Steady accumulators,0.19901922791714827
+daily,deseasonalised,calm,Net withdrawers,Year-end redeemers,0.16305706622612848
+daily,deseasonalised,calm,Rare traders,Large active holders,-0.013527314531295428
+daily,deseasonalised,calm,Rare traders,Low-activity holders,-0.0013163187499658847
+daily,deseasonalised,calm,Rare traders,March (year-end) redeemers,-0.00658783315405966
+daily,deseasonalised,calm,Rare traders,Month-end traders,-0.005788165016439323
+daily,deseasonalised,calm,Rare traders,Net withdrawers,-0.002151206100341258
+daily,deseasonalised,calm,Rare traders,Rare traders,1.0
+daily,deseasonalised,calm,Rare traders,Steady accumulators,-0.009086179968193338
+daily,deseasonalised,calm,Rare traders,Year-end redeemers,-0.007654953334983145
+daily,deseasonalised,calm,Steady accumulators,Large active holders,0.2098211411188533
+daily,deseasonalised,calm,Steady accumulators,Low-activity holders,-0.02808695030986204
+daily,deseasonalised,calm,Steady accumulators,March (year-end) redeemers,0.07150107933901925
+daily,deseasonalised,calm,Steady accumulators,Month-end traders,-0.0007500266947586115
+daily,deseasonalised,calm,Steady accumulators,Net withdrawers,0.19901922791714827
+daily,deseasonalised,calm,Steady accumulators,Rare traders,-0.009086179968193338
+daily,deseasonalised,calm,Steady accumulators,Steady accumulators,1.0
+daily,deseasonalised,calm,Steady accumulators,Year-end redeemers,0.13895363721524967
+daily,deseasonalised,calm,Year-end redeemers,Large active holders,0.24733884460517114
+daily,deseasonalised,calm,Year-end redeemers,Low-activity holders,-0.02257413010847891
+daily,deseasonalised,calm,Year-end redeemers,March (year-end) redeemers,0.05523353871559604
+daily,deseasonalised,calm,Year-end redeemers,Month-end traders,0.016923242695788005
+daily,deseasonalised,calm,Year-end redeemers,Net withdrawers,0.16305706622612848
+daily,deseasonalised,calm,Year-end redeemers,Rare traders,-0.007654953334983145
+daily,deseasonalised,calm,Year-end redeemers,Steady accumulators,0.13895363721524967
+daily,deseasonalised,calm,Year-end redeemers,Year-end redeemers,1.0
+daily,deseasonalised,stress,Large active holders,Large active holders,1.0
+daily,deseasonalised,stress,Large active holders,Low-activity holders,-0.038642018105421366
+daily,deseasonalised,stress,Large active holders,March (year-end) redeemers,0.13693829884631686
+daily,deseasonalised,stress,Large active holders,Month-end traders,0.029488904866264876
+daily,deseasonalised,stress,Large active holders,Net withdrawers,0.23201074888899137
+daily,deseasonalised,stress,Large active holders,Rare traders,0.016360671229569138
+daily,deseasonalised,stress,Large active holders,Steady accumulators,0.18856230599959226
+daily,deseasonalised,stress,Large active holders,Year-end redeemers,0.1630411516015271
+daily,deseasonalised,stress,Low-activity holders,Large active holders,-0.038642018105421366
+daily,deseasonalised,stress,Low-activity holders,Low-activity holders,1.0
+daily,deseasonalised,stress,Low-activity holders,March (year-end) redeemers,0.025561034388862203
+daily,deseasonalised,stress,Low-activity holders,Month-end traders,0.001966824532014187
+daily,deseasonalised,stress,Low-activity holders,Net withdrawers,-0.0035201171152936554
+daily,deseasonalised,stress,Low-activity holders,Rare traders,0.0029628042189540596
+daily,deseasonalised,stress,Low-activity holders,Steady accumulators,0.001729491814505215
+daily,deseasonalised,stress,Low-activity holders,Year-end redeemers,-0.014621257190823992
+daily,deseasonalised,stress,March (year-end) redeemers,Large active holders,0.13693829884631686
+daily,deseasonalised,stress,March (year-end) redeemers,Low-activity holders,0.025561034388862203
+daily,deseasonalised,stress,March (year-end) redeemers,March (year-end) redeemers,1.0
+daily,deseasonalised,stress,March (year-end) redeemers,Month-end traders,-0.011805824799432913
+daily,deseasonalised,stress,March (year-end) redeemers,Net withdrawers,0.14507085812144996
+daily,deseasonalised,stress,March (year-end) redeemers,Rare traders,-0.004505735654222873
+daily,deseasonalised,stress,March (year-end) redeemers,Steady accumulators,0.10484885713014964
+daily,deseasonalised,stress,March (year-end) redeemers,Year-end redeemers,0.03370029411140784
+daily,deseasonalised,stress,Month-end traders,Large active holders,0.029488904866264876
+daily,deseasonalised,stress,Month-end traders,Low-activity holders,0.001966824532014187
+daily,deseasonalised,stress,Month-end traders,March (year-end) redeemers,-0.011805824799432913
+daily,deseasonalised,stress,Month-end traders,Month-end traders,1.0
+daily,deseasonalised,stress,Month-end traders,Net withdrawers,0.06389199888792955
+daily,deseasonalised,stress,Month-end traders,Rare traders,-0.03805988607113277
+daily,deseasonalised,stress,Month-end traders,Steady accumulators,-0.04101060858698434
+daily,deseasonalised,stress,Month-end traders,Year-end redeemers,0.015312808814972032
+daily,deseasonalised,stress,Net withdrawers,Large active holders,0.23201074888899137
+daily,deseasonalised,stress,Net withdrawers,Low-activity holders,-0.0035201171152936554
+daily,deseasonalised,stress,Net withdrawers,March (year-end) redeemers,0.14507085812144996
+daily,deseasonalised,stress,Net withdrawers,Month-end traders,0.06389199888792955
+daily,deseasonalised,stress,Net withdrawers,Net withdrawers,1.0
+daily,deseasonalised,stress,Net withdrawers,Rare traders,-0.0015326906179542281
+daily,deseasonalised,stress,Net withdrawers,Steady accumulators,0.19960985321808505
+daily,deseasonalised,stress,Net withdrawers,Year-end redeemers,0.22016039645202434
+daily,deseasonalised,stress,Rare traders,Large active holders,0.016360671229569138
+daily,deseasonalised,stress,Rare traders,Low-activity holders,0.0029628042189540596
+daily,deseasonalised,stress,Rare traders,March (year-end) redeemers,-0.004505735654222873
+daily,deseasonalised,stress,Rare traders,Month-end traders,-0.03805988607113277
+daily,deseasonalised,stress,Rare traders,Net withdrawers,-0.0015326906179542281
+daily,deseasonalised,stress,Rare traders,Rare traders,1.0
+daily,deseasonalised,stress,Rare traders,Steady accumulators,-0.01543061500637379
+daily,deseasonalised,stress,Rare traders,Year-end redeemers,0.013329167852513412
+daily,deseasonalised,stress,Steady accumulators,Large active holders,0.18856230599959226
+daily,deseasonalised,stress,Steady accumulators,Low-activity holders,0.001729491814505215
+daily,deseasonalised,stress,Steady accumulators,March (year-end) redeemers,0.10484885713014964
+daily,deseasonalised,stress,Steady accumulators,Month-end traders,-0.04101060858698434
+daily,deseasonalised,stress,Steady accumulators,Net withdrawers,0.19960985321808505
+daily,deseasonalised,stress,Steady accumulators,Rare traders,-0.01543061500637379
+daily,deseasonalised,stress,Steady accumulators,Steady accumulators,1.0
+daily,deseasonalised,stress,Steady accumulators,Year-end redeemers,0.11734642204417996
+daily,deseasonalised,stress,Year-end redeemers,Large active holders,0.1630411516015271
+daily,deseasonalised,stress,Year-end redeemers,Low-activity holders,-0.014621257190823992
+daily,deseasonalised,stress,Year-end redeemers,March (year-end) redeemers,0.03370029411140784
+daily,deseasonalised,stress,Year-end redeemers,Month-end traders,0.015312808814972032
+daily,deseasonalised,stress,Year-end redeemers,Net withdrawers,0.22016039645202434
+daily,deseasonalised,stress,Year-end redeemers,Rare traders,0.013329167852513412
+daily,deseasonalised,stress,Year-end redeemers,Steady accumulators,0.11734642204417996
+daily,deseasonalised,stress,Year-end redeemers,Year-end redeemers,1.0
+weekly,raw,all,Large active holders,Large active holders,1.0
+weekly,raw,all,Large active holders,Low-activity holders,-0.024503504846943126
+weekly,raw,all,Large active holders,March (year-end) redeemers,0.388430016013725
+weekly,raw,all,Large active holders,Month-end traders,0.33479958965814854
+weekly,raw,all,Large active holders,Net withdrawers,0.507186716141166
+weekly,raw,all,Large active holders,Rare traders,0.024522388944282998
+weekly,raw,all,Large active holders,Steady accumulators,0.3248255767989975
+weekly,raw,all,Large active holders,Year-end redeemers,0.7335202719478191
+weekly,raw,all,Low-activity holders,Large active holders,-0.024503504846943126
+weekly,raw,all,Low-activity holders,Low-activity holders,1.0
+weekly,raw,all,Low-activity holders,March (year-end) redeemers,0.017507464712975606
+weekly,raw,all,Low-activity holders,Month-end traders,-0.02119138299357677
+weekly,raw,all,Low-activity holders,Net withdrawers,0.0071799482295899575
+weekly,raw,all,Low-activity holders,Rare traders,0.03058848158448225
+weekly,raw,all,Low-activity holders,Steady accumulators,-0.03540698219071467
+weekly,raw,all,Low-activity holders,Year-end redeemers,-0.022220552383284884
+weekly,raw,all,March (year-end) redeemers,Large active holders,0.388430016013725
+weekly,raw,all,March (year-end) redeemers,Low-activity holders,0.017507464712975606
+weekly,raw,all,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,raw,all,March (year-end) redeemers,Month-end traders,0.06608639516187816
+weekly,raw,all,March (year-end) redeemers,Net withdrawers,0.17834652104655657
+weekly,raw,all,March (year-end) redeemers,Rare traders,0.008665965672201459
+weekly,raw,all,March (year-end) redeemers,Steady accumulators,0.14896174294693404
+weekly,raw,all,March (year-end) redeemers,Year-end redeemers,0.4017997689229013
+weekly,raw,all,Month-end traders,Large active holders,0.33479958965814854
+weekly,raw,all,Month-end traders,Low-activity holders,-0.02119138299357677
+weekly,raw,all,Month-end traders,March (year-end) redeemers,0.06608639516187816
+weekly,raw,all,Month-end traders,Month-end traders,1.0
+weekly,raw,all,Month-end traders,Net withdrawers,0.3613514548006987
+weekly,raw,all,Month-end traders,Rare traders,0.0182799150982354
+weekly,raw,all,Month-end traders,Steady accumulators,0.3180749808297705
+weekly,raw,all,Month-end traders,Year-end redeemers,0.27942997606036535
+weekly,raw,all,Net withdrawers,Large active holders,0.507186716141166
+weekly,raw,all,Net withdrawers,Low-activity holders,0.0071799482295899575
+weekly,raw,all,Net withdrawers,March (year-end) redeemers,0.17834652104655657
+weekly,raw,all,Net withdrawers,Month-end traders,0.3613514548006987
+weekly,raw,all,Net withdrawers,Net withdrawers,1.0
+weekly,raw,all,Net withdrawers,Rare traders,-0.008179863187788426
+weekly,raw,all,Net withdrawers,Steady accumulators,0.6159871749765127
+weekly,raw,all,Net withdrawers,Year-end redeemers,0.2971980784529776
+weekly,raw,all,Rare traders,Large active holders,0.024522388944282998
+weekly,raw,all,Rare traders,Low-activity holders,0.03058848158448225
+weekly,raw,all,Rare traders,March (year-end) redeemers,0.008665965672201459
+weekly,raw,all,Rare traders,Month-end traders,0.0182799150982354
+weekly,raw,all,Rare traders,Net withdrawers,-0.008179863187788426
+weekly,raw,all,Rare traders,Rare traders,1.0
+weekly,raw,all,Rare traders,Steady accumulators,-0.03208032362763211
+weekly,raw,all,Rare traders,Year-end redeemers,0.043432479089452795
+weekly,raw,all,Steady accumulators,Large active holders,0.3248255767989975
+weekly,raw,all,Steady accumulators,Low-activity holders,-0.03540698219071467
+weekly,raw,all,Steady accumulators,March (year-end) redeemers,0.14896174294693404
+weekly,raw,all,Steady accumulators,Month-end traders,0.3180749808297705
+weekly,raw,all,Steady accumulators,Net withdrawers,0.6159871749765127
+weekly,raw,all,Steady accumulators,Rare traders,-0.03208032362763211
+weekly,raw,all,Steady accumulators,Steady accumulators,1.0
+weekly,raw,all,Steady accumulators,Year-end redeemers,0.212026798578869
+weekly,raw,all,Year-end redeemers,Large active holders,0.7335202719478191
+weekly,raw,all,Year-end redeemers,Low-activity holders,-0.022220552383284884
+weekly,raw,all,Year-end redeemers,March (year-end) redeemers,0.4017997689229013
+weekly,raw,all,Year-end redeemers,Month-end traders,0.27942997606036535
+weekly,raw,all,Year-end redeemers,Net withdrawers,0.2971980784529776
+weekly,raw,all,Year-end redeemers,Rare traders,0.043432479089452795
+weekly,raw,all,Year-end redeemers,Steady accumulators,0.212026798578869
+weekly,raw,all,Year-end redeemers,Year-end redeemers,1.0
+weekly,raw,calm,Large active holders,Large active holders,1.0
+weekly,raw,calm,Large active holders,Low-activity holders,-0.028479409900000856
+weekly,raw,calm,Large active holders,March (year-end) redeemers,0.36913049517212937
+weekly,raw,calm,Large active holders,Month-end traders,0.3290124226682783
+weekly,raw,calm,Large active holders,Net withdrawers,0.49913220165920874
+weekly,raw,calm,Large active holders,Rare traders,0.0017423551236638289
+weekly,raw,calm,Large active holders,Steady accumulators,0.3226862177842906
+weekly,raw,calm,Large active holders,Year-end redeemers,0.743612357962429
+weekly,raw,calm,Low-activity holders,Large active holders,-0.028479409900000856
+weekly,raw,calm,Low-activity holders,Low-activity holders,1.0
+weekly,raw,calm,Low-activity holders,March (year-end) redeemers,0.005083510992266128
+weekly,raw,calm,Low-activity holders,Month-end traders,-0.008002871056796331
+weekly,raw,calm,Low-activity holders,Net withdrawers,0.008798312316363632
+weekly,raw,calm,Low-activity holders,Rare traders,0.015627161772092567
+weekly,raw,calm,Low-activity holders,Steady accumulators,-0.046579175804894464
+weekly,raw,calm,Low-activity holders,Year-end redeemers,-0.029418243708856675
+weekly,raw,calm,March (year-end) redeemers,Large active holders,0.36913049517212937
+weekly,raw,calm,March (year-end) redeemers,Low-activity holders,0.005083510992266128
+weekly,raw,calm,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,raw,calm,March (year-end) redeemers,Month-end traders,0.05519348083105937
+weekly,raw,calm,March (year-end) redeemers,Net withdrawers,0.16146850601231932
+weekly,raw,calm,March (year-end) redeemers,Rare traders,-0.017127690361411364
+weekly,raw,calm,March (year-end) redeemers,Steady accumulators,0.13187261806290035
+weekly,raw,calm,March (year-end) redeemers,Year-end redeemers,0.4022428831728145
+weekly,raw,calm,Month-end traders,Large active holders,0.3290124226682783
+weekly,raw,calm,Month-end traders,Low-activity holders,-0.008002871056796331
+weekly,raw,calm,Month-end traders,March (year-end) redeemers,0.05519348083105937
+weekly,raw,calm,Month-end traders,Month-end traders,1.0
+weekly,raw,calm,Month-end traders,Net withdrawers,0.3601198202251413
+weekly,raw,calm,Month-end traders,Rare traders,0.0008836355484908669
+weekly,raw,calm,Month-end traders,Steady accumulators,0.3275194363761052
+weekly,raw,calm,Month-end traders,Year-end redeemers,0.28300359818223403
+weekly,raw,calm,Net withdrawers,Large active holders,0.49913220165920874
+weekly,raw,calm,Net withdrawers,Low-activity holders,0.008798312316363632
+weekly,raw,calm,Net withdrawers,March (year-end) redeemers,0.16146850601231932
+weekly,raw,calm,Net withdrawers,Month-end traders,0.3601198202251413
+weekly,raw,calm,Net withdrawers,Net withdrawers,1.0
+weekly,raw,calm,Net withdrawers,Rare traders,-0.03129617837359394
+weekly,raw,calm,Net withdrawers,Steady accumulators,0.6245378749035604
+weekly,raw,calm,Net withdrawers,Year-end redeemers,0.3010437203771134
+weekly,raw,calm,Rare traders,Large active holders,0.0017423551236638289
+weekly,raw,calm,Rare traders,Low-activity holders,0.015627161772092567
+weekly,raw,calm,Rare traders,March (year-end) redeemers,-0.017127690361411364
+weekly,raw,calm,Rare traders,Month-end traders,0.0008836355484908669
+weekly,raw,calm,Rare traders,Net withdrawers,-0.03129617837359394
+weekly,raw,calm,Rare traders,Rare traders,1.0
+weekly,raw,calm,Rare traders,Steady accumulators,-0.02748111118616415
+weekly,raw,calm,Rare traders,Year-end redeemers,0.020685293952070936
+weekly,raw,calm,Steady accumulators,Large active holders,0.3226862177842906
+weekly,raw,calm,Steady accumulators,Low-activity holders,-0.046579175804894464
+weekly,raw,calm,Steady accumulators,March (year-end) redeemers,0.13187261806290035
+weekly,raw,calm,Steady accumulators,Month-end traders,0.3275194363761052
+weekly,raw,calm,Steady accumulators,Net withdrawers,0.6245378749035604
+weekly,raw,calm,Steady accumulators,Rare traders,-0.02748111118616415
+weekly,raw,calm,Steady accumulators,Steady accumulators,1.0
+weekly,raw,calm,Steady accumulators,Year-end redeemers,0.20834015239589548
+weekly,raw,calm,Year-end redeemers,Large active holders,0.743612357962429
+weekly,raw,calm,Year-end redeemers,Low-activity holders,-0.029418243708856675
+weekly,raw,calm,Year-end redeemers,March (year-end) redeemers,0.4022428831728145
+weekly,raw,calm,Year-end redeemers,Month-end traders,0.28300359818223403
+weekly,raw,calm,Year-end redeemers,Net withdrawers,0.3010437203771134
+weekly,raw,calm,Year-end redeemers,Rare traders,0.020685293952070936
+weekly,raw,calm,Year-end redeemers,Steady accumulators,0.20834015239589548
+weekly,raw,calm,Year-end redeemers,Year-end redeemers,1.0
+weekly,raw,stress,Large active holders,Large active holders,1.0
+weekly,raw,stress,Large active holders,Low-activity holders,-0.006080557191488909
+weekly,raw,stress,Large active holders,March (year-end) redeemers,0.4723708690817369
+weekly,raw,stress,Large active holders,Month-end traders,0.36471642957311
+weekly,raw,stress,Large active holders,Net withdrawers,0.5728470940882933
+weekly,raw,stress,Large active holders,Rare traders,0.11087040800720378
+weekly,raw,stress,Large active holders,Steady accumulators,0.3374445455288358
+weekly,raw,stress,Large active holders,Year-end redeemers,0.6931311482712917
+weekly,raw,stress,Low-activity holders,Large active holders,-0.006080557191488909
+weekly,raw,stress,Low-activity holders,Low-activity holders,1.0
+weekly,raw,stress,Low-activity holders,March (year-end) redeemers,0.059010425442126986
+weekly,raw,stress,Low-activity holders,Month-end traders,-0.0777157767266359
+weekly,raw,stress,Low-activity holders,Net withdrawers,0.00823257196743321
+weekly,raw,stress,Low-activity holders,Rare traders,0.08073538938082356
+weekly,raw,stress,Low-activity holders,Steady accumulators,0.018337008699837298
+weekly,raw,stress,Low-activity holders,Year-end redeemers,0.0030996344057349213
+weekly,raw,stress,March (year-end) redeemers,Large active holders,0.4723708690817369
+weekly,raw,stress,March (year-end) redeemers,Low-activity holders,0.059010425442126986
+weekly,raw,stress,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,raw,stress,March (year-end) redeemers,Month-end traders,0.10562028749925499
+weekly,raw,stress,March (year-end) redeemers,Net withdrawers,0.28181274519895955
+weekly,raw,stress,March (year-end) redeemers,Rare traders,0.08367071938780712
+weekly,raw,stress,March (year-end) redeemers,Steady accumulators,0.22867681688397934
+weekly,raw,stress,March (year-end) redeemers,Year-end redeemers,0.4095046711274171
+weekly,raw,stress,Month-end traders,Large active holders,0.36471642957311
+weekly,raw,stress,Month-end traders,Low-activity holders,-0.0777157767266359
+weekly,raw,stress,Month-end traders,March (year-end) redeemers,0.10562028749925499
+weekly,raw,stress,Month-end traders,Month-end traders,1.0
+weekly,raw,stress,Month-end traders,Net withdrawers,0.4023254035552667
+weekly,raw,stress,Month-end traders,Rare traders,0.08027680889064083
+weekly,raw,stress,Month-end traders,Steady accumulators,0.2756018990993245
+weekly,raw,stress,Month-end traders,Year-end redeemers,0.25926988416563157
+weekly,raw,stress,Net withdrawers,Large active holders,0.5728470940882933
+weekly,raw,stress,Net withdrawers,Low-activity holders,0.00823257196743321
+weekly,raw,stress,Net withdrawers,March (year-end) redeemers,0.28181274519895955
+weekly,raw,stress,Net withdrawers,Month-end traders,0.4023254035552667
+weekly,raw,stress,Net withdrawers,Net withdrawers,1.0
+weekly,raw,stress,Net withdrawers,Rare traders,0.1003806264854593
+weekly,raw,stress,Net withdrawers,Steady accumulators,0.5694976884868832
+weekly,raw,stress,Net withdrawers,Year-end redeemers,0.3114845224783776
+weekly,raw,stress,Rare traders,Large active holders,0.11087040800720378
+weekly,raw,stress,Rare traders,Low-activity holders,0.08073538938082356
+weekly,raw,stress,Rare traders,March (year-end) redeemers,0.08367071938780712
+weekly,raw,stress,Rare traders,Month-end traders,0.08027680889064083
+weekly,raw,stress,Rare traders,Net withdrawers,0.1003806264854593
+weekly,raw,stress,Rare traders,Rare traders,1.0
+weekly,raw,stress,Rare traders,Steady accumulators,-0.053092393926072144
+weekly,raw,stress,Rare traders,Year-end redeemers,0.12794354949246828
+weekly,raw,stress,Steady accumulators,Large active holders,0.3374445455288358
+weekly,raw,stress,Steady accumulators,Low-activity holders,0.018337008699837298
+weekly,raw,stress,Steady accumulators,March (year-end) redeemers,0.22867681688397934
+weekly,raw,stress,Steady accumulators,Month-end traders,0.2756018990993245
+weekly,raw,stress,Steady accumulators,Net withdrawers,0.5694976884868832
+weekly,raw,stress,Steady accumulators,Rare traders,-0.053092393926072144
+weekly,raw,stress,Steady accumulators,Steady accumulators,1.0
+weekly,raw,stress,Steady accumulators,Year-end redeemers,0.23645679159225355
+weekly,raw,stress,Year-end redeemers,Large active holders,0.6931311482712917
+weekly,raw,stress,Year-end redeemers,Low-activity holders,0.0030996344057349213
+weekly,raw,stress,Year-end redeemers,March (year-end) redeemers,0.4095046711274171
+weekly,raw,stress,Year-end redeemers,Month-end traders,0.25926988416563157
+weekly,raw,stress,Year-end redeemers,Net withdrawers,0.3114845224783776
+weekly,raw,stress,Year-end redeemers,Rare traders,0.12794354949246828
+weekly,raw,stress,Year-end redeemers,Steady accumulators,0.23645679159225355
+weekly,raw,stress,Year-end redeemers,Year-end redeemers,1.0
+weekly,deseasonalised,all,Large active holders,Large active holders,1.0
+weekly,deseasonalised,all,Large active holders,Low-activity holders,0.0028915940587364197
+weekly,deseasonalised,all,Large active holders,March (year-end) redeemers,0.1986141429655265
+weekly,deseasonalised,all,Large active holders,Month-end traders,-0.029145015232689163
+weekly,deseasonalised,all,Large active holders,Net withdrawers,0.4192539174887921
+weekly,deseasonalised,all,Large active holders,Rare traders,-0.05696609986410784
+weekly,deseasonalised,all,Large active holders,Steady accumulators,0.3551730520823598
+weekly,deseasonalised,all,Large active holders,Year-end redeemers,0.3126868249341136
+weekly,deseasonalised,all,Low-activity holders,Large active holders,0.0028915940587364197
+weekly,deseasonalised,all,Low-activity holders,Low-activity holders,1.0
+weekly,deseasonalised,all,Low-activity holders,March (year-end) redeemers,0.05387141347751258
+weekly,deseasonalised,all,Low-activity holders,Month-end traders,0.012364331774509874
+weekly,deseasonalised,all,Low-activity holders,Net withdrawers,0.04609439534194894
+weekly,deseasonalised,all,Low-activity holders,Rare traders,0.03277470368776361
+weekly,deseasonalised,all,Low-activity holders,Steady accumulators,-0.03387720375306222
+weekly,deseasonalised,all,Low-activity holders,Year-end redeemers,-0.021620583851243238
+weekly,deseasonalised,all,March (year-end) redeemers,Large active holders,0.1986141429655265
+weekly,deseasonalised,all,March (year-end) redeemers,Low-activity holders,0.05387141347751258
+weekly,deseasonalised,all,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,deseasonalised,all,March (year-end) redeemers,Month-end traders,0.0027667373376327486
+weekly,deseasonalised,all,March (year-end) redeemers,Net withdrawers,0.17623269872935937
+weekly,deseasonalised,all,March (year-end) redeemers,Rare traders,-0.03331135102773843
+weekly,deseasonalised,all,March (year-end) redeemers,Steady accumulators,0.12602209787250074
+weekly,deseasonalised,all,March (year-end) redeemers,Year-end redeemers,0.04315950959798246
+weekly,deseasonalised,all,Month-end traders,Large active holders,-0.029145015232689163
+weekly,deseasonalised,all,Month-end traders,Low-activity holders,0.012364331774509874
+weekly,deseasonalised,all,Month-end traders,March (year-end) redeemers,0.0027667373376327486
+weekly,deseasonalised,all,Month-end traders,Month-end traders,1.0
+weekly,deseasonalised,all,Month-end traders,Net withdrawers,0.05969749255947142
+weekly,deseasonalised,all,Month-end traders,Rare traders,-0.02294750740073231
+weekly,deseasonalised,all,Month-end traders,Steady accumulators,0.11183689581393788
+weekly,deseasonalised,all,Month-end traders,Year-end redeemers,0.011073040413189428
+weekly,deseasonalised,all,Net withdrawers,Large active holders,0.4192539174887921
+weekly,deseasonalised,all,Net withdrawers,Low-activity holders,0.04609439534194894
+weekly,deseasonalised,all,Net withdrawers,March (year-end) redeemers,0.17623269872935937
+weekly,deseasonalised,all,Net withdrawers,Month-end traders,0.05969749255947142
+weekly,deseasonalised,all,Net withdrawers,Net withdrawers,1.0
+weekly,deseasonalised,all,Net withdrawers,Rare traders,-0.03585761106593958
+weekly,deseasonalised,all,Net withdrawers,Steady accumulators,0.40871339680221896
+weekly,deseasonalised,all,Net withdrawers,Year-end redeemers,0.2677014892595429
+weekly,deseasonalised,all,Rare traders,Large active holders,-0.05696609986410784
+weekly,deseasonalised,all,Rare traders,Low-activity holders,0.03277470368776361
+weekly,deseasonalised,all,Rare traders,March (year-end) redeemers,-0.03331135102773843
+weekly,deseasonalised,all,Rare traders,Month-end traders,-0.02294750740073231
+weekly,deseasonalised,all,Rare traders,Net withdrawers,-0.03585761106593958
+weekly,deseasonalised,all,Rare traders,Rare traders,1.0
+weekly,deseasonalised,all,Rare traders,Steady accumulators,-0.04326317337011759
+weekly,deseasonalised,all,Rare traders,Year-end redeemers,-0.007777272834092099
+weekly,deseasonalised,all,Steady accumulators,Large active holders,0.3551730520823598
+weekly,deseasonalised,all,Steady accumulators,Low-activity holders,-0.03387720375306222
+weekly,deseasonalised,all,Steady accumulators,March (year-end) redeemers,0.12602209787250074
+weekly,deseasonalised,all,Steady accumulators,Month-end traders,0.11183689581393788
+weekly,deseasonalised,all,Steady accumulators,Net withdrawers,0.40871339680221896
+weekly,deseasonalised,all,Steady accumulators,Rare traders,-0.04326317337011759
+weekly,deseasonalised,all,Steady accumulators,Steady accumulators,1.0
+weekly,deseasonalised,all,Steady accumulators,Year-end redeemers,0.2290798566601831
+weekly,deseasonalised,all,Year-end redeemers,Large active holders,0.3126868249341136
+weekly,deseasonalised,all,Year-end redeemers,Low-activity holders,-0.021620583851243238
+weekly,deseasonalised,all,Year-end redeemers,March (year-end) redeemers,0.04315950959798246
+weekly,deseasonalised,all,Year-end redeemers,Month-end traders,0.011073040413189428
+weekly,deseasonalised,all,Year-end redeemers,Net withdrawers,0.2677014892595429
+weekly,deseasonalised,all,Year-end redeemers,Rare traders,-0.007777272834092099
+weekly,deseasonalised,all,Year-end redeemers,Steady accumulators,0.2290798566601831
+weekly,deseasonalised,all,Year-end redeemers,Year-end redeemers,1.0
+weekly,deseasonalised,calm,Large active holders,Large active holders,1.0
+weekly,deseasonalised,calm,Large active holders,Low-activity holders,-0.0035668798966211447
+weekly,deseasonalised,calm,Large active holders,March (year-end) redeemers,0.18313627562617973
+weekly,deseasonalised,calm,Large active holders,Month-end traders,-0.042460170303132705
+weekly,deseasonalised,calm,Large active holders,Net withdrawers,0.4257600875922671
+weekly,deseasonalised,calm,Large active holders,Rare traders,-0.06442787726593842
+weekly,deseasonalised,calm,Large active holders,Steady accumulators,0.37862524670832953
+weekly,deseasonalised,calm,Large active holders,Year-end redeemers,0.3411188124947261
+weekly,deseasonalised,calm,Low-activity holders,Large active holders,-0.0035668798966211447
+weekly,deseasonalised,calm,Low-activity holders,Low-activity holders,1.0
+weekly,deseasonalised,calm,Low-activity holders,March (year-end) redeemers,0.051885825588749636
+weekly,deseasonalised,calm,Low-activity holders,Month-end traders,0.020785661802557347
+weekly,deseasonalised,calm,Low-activity holders,Net withdrawers,0.05027836275545997
+weekly,deseasonalised,calm,Low-activity holders,Rare traders,0.018876281609994182
+weekly,deseasonalised,calm,Low-activity holders,Steady accumulators,-0.041636629229512
+weekly,deseasonalised,calm,Low-activity holders,Year-end redeemers,-0.03147086040950095
+weekly,deseasonalised,calm,March (year-end) redeemers,Large active holders,0.18313627562617973
+weekly,deseasonalised,calm,March (year-end) redeemers,Low-activity holders,0.051885825588749636
+weekly,deseasonalised,calm,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,deseasonalised,calm,March (year-end) redeemers,Month-end traders,-0.019806719790316354
+weekly,deseasonalised,calm,March (year-end) redeemers,Net withdrawers,0.15406577269642202
+weekly,deseasonalised,calm,March (year-end) redeemers,Rare traders,-0.04884292414902082
+weekly,deseasonalised,calm,March (year-end) redeemers,Steady accumulators,0.11228236881137328
+weekly,deseasonalised,calm,March (year-end) redeemers,Year-end redeemers,0.05388642490722029
+weekly,deseasonalised,calm,Month-end traders,Large active holders,-0.042460170303132705
+weekly,deseasonalised,calm,Month-end traders,Low-activity holders,0.020785661802557347
+weekly,deseasonalised,calm,Month-end traders,March (year-end) redeemers,-0.019806719790316354
+weekly,deseasonalised,calm,Month-end traders,Month-end traders,1.0
+weekly,deseasonalised,calm,Month-end traders,Net withdrawers,0.0565508984177335
+weekly,deseasonalised,calm,Month-end traders,Rare traders,-0.034056678962551545
+weekly,deseasonalised,calm,Month-end traders,Steady accumulators,0.1022084699602215
+weekly,deseasonalised,calm,Month-end traders,Year-end redeemers,0.009397000701490582
+weekly,deseasonalised,calm,Net withdrawers,Large active holders,0.4257600875922671
+weekly,deseasonalised,calm,Net withdrawers,Low-activity holders,0.05027836275545997
+weekly,deseasonalised,calm,Net withdrawers,March (year-end) redeemers,0.15406577269642202
+weekly,deseasonalised,calm,Net withdrawers,Month-end traders,0.0565508984177335
+weekly,deseasonalised,calm,Net withdrawers,Net withdrawers,1.0
+weekly,deseasonalised,calm,Net withdrawers,Rare traders,-0.048932700854225165
+weekly,deseasonalised,calm,Net withdrawers,Steady accumulators,0.41849021055121766
+weekly,deseasonalised,calm,Net withdrawers,Year-end redeemers,0.28018709611822157
+weekly,deseasonalised,calm,Rare traders,Large active holders,-0.06442787726593842
+weekly,deseasonalised,calm,Rare traders,Low-activity holders,0.018876281609994182
+weekly,deseasonalised,calm,Rare traders,March (year-end) redeemers,-0.04884292414902082
+weekly,deseasonalised,calm,Rare traders,Month-end traders,-0.034056678962551545
+weekly,deseasonalised,calm,Rare traders,Net withdrawers,-0.048932700854225165
+weekly,deseasonalised,calm,Rare traders,Rare traders,1.0
+weekly,deseasonalised,calm,Rare traders,Steady accumulators,-0.03189023207325065
+weekly,deseasonalised,calm,Rare traders,Year-end redeemers,-0.031340837574028106
+weekly,deseasonalised,calm,Steady accumulators,Large active holders,0.37862524670832953
+weekly,deseasonalised,calm,Steady accumulators,Low-activity holders,-0.041636629229512
+weekly,deseasonalised,calm,Steady accumulators,March (year-end) redeemers,0.11228236881137328
+weekly,deseasonalised,calm,Steady accumulators,Month-end traders,0.1022084699602215
+weekly,deseasonalised,calm,Steady accumulators,Net withdrawers,0.41849021055121766
+weekly,deseasonalised,calm,Steady accumulators,Rare traders,-0.03189023207325065
+weekly,deseasonalised,calm,Steady accumulators,Steady accumulators,1.0
+weekly,deseasonalised,calm,Steady accumulators,Year-end redeemers,0.23574966973004582
+weekly,deseasonalised,calm,Year-end redeemers,Large active holders,0.3411188124947261
+weekly,deseasonalised,calm,Year-end redeemers,Low-activity holders,-0.03147086040950095
+weekly,deseasonalised,calm,Year-end redeemers,March (year-end) redeemers,0.05388642490722029
+weekly,deseasonalised,calm,Year-end redeemers,Month-end traders,0.009397000701490582
+weekly,deseasonalised,calm,Year-end redeemers,Net withdrawers,0.28018709611822157
+weekly,deseasonalised,calm,Year-end redeemers,Rare traders,-0.031340837574028106
+weekly,deseasonalised,calm,Year-end redeemers,Steady accumulators,0.23574966973004582
+weekly,deseasonalised,calm,Year-end redeemers,Year-end redeemers,1.0
+weekly,deseasonalised,stress,Large active holders,Large active holders,1.0
+weekly,deseasonalised,stress,Large active holders,Low-activity holders,0.036171013124954014
+weekly,deseasonalised,stress,Large active holders,March (year-end) redeemers,0.26378443776278815
+weekly,deseasonalised,stress,Large active holders,Month-end traders,0.04000393988126463
+weekly,deseasonalised,stress,Large active holders,Net withdrawers,0.3737749134515802
+weekly,deseasonalised,stress,Large active holders,Rare traders,-0.02856300947295416
+weekly,deseasonalised,stress,Large active holders,Steady accumulators,0.22747979722309913
+weekly,deseasonalised,stress,Large active holders,Year-end redeemers,0.1885965100115842
+weekly,deseasonalised,stress,Low-activity holders,Large active holders,0.036171013124954014
+weekly,deseasonalised,stress,Low-activity holders,Low-activity holders,1.0
+weekly,deseasonalised,stress,Low-activity holders,March (year-end) redeemers,0.06431718074404418
+weekly,deseasonalised,stress,Low-activity holders,Month-end traders,-0.022322186954517112
+weekly,deseasonalised,stress,Low-activity holders,Net withdrawers,0.037238962410726696
+weekly,deseasonalised,stress,Low-activity holders,Rare traders,0.08036970369697505
+weekly,deseasonalised,stress,Low-activity holders,Steady accumulators,0.0025780516000532406
+weekly,deseasonalised,stress,Low-activity holders,Year-end redeemers,0.014938995113434933
+weekly,deseasonalised,stress,March (year-end) redeemers,Large active holders,0.26378443776278815
+weekly,deseasonalised,stress,March (year-end) redeemers,Low-activity holders,0.06431718074404418
+weekly,deseasonalised,stress,March (year-end) redeemers,March (year-end) redeemers,1.0
+weekly,deseasonalised,stress,March (year-end) redeemers,Month-end traders,0.09180230509684491
+weekly,deseasonalised,stress,March (year-end) redeemers,Net withdrawers,0.31341830537959725
+weekly,deseasonalised,stress,March (year-end) redeemers,Rare traders,0.01663066813480785
+weekly,deseasonalised,stress,March (year-end) redeemers,Steady accumulators,0.1719302414172078
+weekly,deseasonalised,stress,March (year-end) redeemers,Year-end redeemers,0.00853387502193041
+weekly,deseasonalised,stress,Month-end traders,Large active holders,0.04000393988126463
+weekly,deseasonalised,stress,Month-end traders,Low-activity holders,-0.022322186954517112
+weekly,deseasonalised,stress,Month-end traders,March (year-end) redeemers,0.09180230509684491
+weekly,deseasonalised,stress,Month-end traders,Month-end traders,1.0
+weekly,deseasonalised,stress,Month-end traders,Net withdrawers,0.10959169933023116
+weekly,deseasonalised,stress,Month-end traders,Rare traders,0.015942405674391657
+weekly,deseasonalised,stress,Month-end traders,Steady accumulators,0.16317025532599855
+weekly,deseasonalised,stress,Month-end traders,Year-end redeemers,0.01442532107916275
+weekly,deseasonalised,stress,Net withdrawers,Large active holders,0.3737749134515802
+weekly,deseasonalised,stress,Net withdrawers,Low-activity holders,0.037238962410726696
+weekly,deseasonalised,stress,Net withdrawers,March (year-end) redeemers,0.31341830537959725
+weekly,deseasonalised,stress,Net withdrawers,Month-end traders,0.10959169933023116
+weekly,deseasonalised,stress,Net withdrawers,Net withdrawers,1.0
+weekly,deseasonalised,stress,Net withdrawers,Rare traders,0.03125274879957445
+weekly,deseasonalised,stress,Net withdrawers,Steady accumulators,0.3484535509808904
+weekly,deseasonalised,stress,Net withdrawers,Year-end redeemers,0.2404466515733873
+weekly,deseasonalised,stress,Rare traders,Large active holders,-0.02856300947295416
+weekly,deseasonalised,stress,Rare traders,Low-activity holders,0.08036970369697505
+weekly,deseasonalised,stress,Rare traders,March (year-end) redeemers,0.01663066813480785
+weekly,deseasonalised,stress,Rare traders,Month-end traders,0.015942405674391657
+weekly,deseasonalised,stress,Rare traders,Net withdrawers,0.03125274879957445
+weekly,deseasonalised,stress,Rare traders,Rare traders,1.0
+weekly,deseasonalised,stress,Rare traders,Steady accumulators,-0.08791187739920074
+weekly,deseasonalised,stress,Rare traders,Year-end redeemers,0.07532382209374101
+weekly,deseasonalised,stress,Steady accumulators,Large active holders,0.22747979722309913
+weekly,deseasonalised,stress,Steady accumulators,Low-activity holders,0.0025780516000532406
+weekly,deseasonalised,stress,Steady accumulators,March (year-end) redeemers,0.1719302414172078
+weekly,deseasonalised,stress,Steady accumulators,Month-end traders,0.16317025532599855
+weekly,deseasonalised,stress,Steady accumulators,Net withdrawers,0.3484535509808904
+weekly,deseasonalised,stress,Steady accumulators,Rare traders,-0.08791187739920074
+weekly,deseasonalised,stress,Steady accumulators,Steady accumulators,1.0
+weekly,deseasonalised,stress,Steady accumulators,Year-end redeemers,0.20967056303910173
+weekly,deseasonalised,stress,Year-end redeemers,Large active holders,0.1885965100115842
+weekly,deseasonalised,stress,Year-end redeemers,Low-activity holders,0.014938995113434933
+weekly,deseasonalised,stress,Year-end redeemers,March (year-end) redeemers,0.00853387502193041
+weekly,deseasonalised,stress,Year-end redeemers,Month-end traders,0.01442532107916275
+weekly,deseasonalised,stress,Year-end redeemers,Net withdrawers,0.2404466515733873
+weekly,deseasonalised,stress,Year-end redeemers,Rare traders,0.07532382209374101
+weekly,deseasonalised,stress,Year-end redeemers,Steady accumulators,0.20967056303910173
+weekly,deseasonalised,stress,Year-end redeemers,Year-end redeemers,1.0

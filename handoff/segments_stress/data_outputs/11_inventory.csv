@@ -1,0 +1,5 @@
+role,table,rows,fields_present,fields_missing,notes
+Client master,synthetic_clients.csv,11103,"id, sector, open, close, share_class, balance",—,
+Transactions,synthetic_client_flows.csv,901088,"client, trade_date, amount, status, balance_after",—,
+Fund daily,synthetic_fund_daily.csv,5053,"date, aum",—,"unit prices: Income, Accumulation"
+Known future outflows,synthetic_income_distributions.csv,462696,"client, date, amount",—,

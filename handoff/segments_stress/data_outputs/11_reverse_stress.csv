@@ -1,0 +1,10 @@
+buffer,buffer_gbp,after_payables_gbp,clients_before_exhausted,note
+5% of AUM,150000000.3465,138090579.2265,2,
+10% of AUM,300000000.693,288090579.573,6,
+20% of AUM,600000001.386,588090580.266,18,
+UK MMFR · LVNAV/CNAV (current) daily floor 10.0%,300000000.693,288090579.573,6,reference only: this fund is not an MMF
+UK MMFR · LVNAV/CNAV (current) weekly floor 30.0%,900000002.0789999,888090580.9589999,42,reference only: this fund is not an MMF
+UK MMFR · VNAV short-term (current) daily floor 7.5%,225000000.51974997,213090579.39974996,4,reference only: this fund is not an MMF
+UK MMFR · VNAV short-term (current) weekly floor 15.0%,450000001.03949994,438090579.91949993,11,reference only: this fund is not an MMF
+US Rule 2a-7 (2023 amendments) daily floor 25.0%,750000001.7325,738090580.6125,28,reference only: this fund is not an MMF
+US Rule 2a-7 (2023 amendments) weekly floor 50.0%,1500000003.465,1488090582.345,100,reference only: this fund is not an MMF

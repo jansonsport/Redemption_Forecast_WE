@@ -1,0 +1,67 @@
+scenario,family,shortfall_gbp,haircut,sale_needed_gbp,loss_gbp
+Top 1 clients redeem in full,Concentration,0.0,0.01,0.0,0.0
+Top 1 clients redeem in full,Concentration,0.0,0.03,0.0,0.0
+Top 1 clients redeem in full,Concentration,0.0,0.05,0.0,0.0
+Top 5 clients redeem in full,Concentration,0.0,0.01,0.0,0.0
+Top 5 clients redeem in full,Concentration,0.0,0.03,0.0,0.0
+Top 5 clients redeem in full,Concentration,0.0,0.05,0.0,0.0
+Top 10 clients redeem in full,Concentration,100797157.30305815,0.01,101815310.40712944,1018153.1040712944
+Top 10 clients redeem in full,Concentration,100797157.30305815,0.03,103914595.15779191,3117437.8547337567
+Top 10 clients redeem in full,Concentration,100797157.30305815,0.05,106102270.84532437,5305113.542266219
+Top 20 clients redeem in full,Concentration,311609069.9224654,0.01,314756636.28531855,3147566.362853186
+Top 20 clients redeem in full,Concentration,311609069.9224654,0.03,321246463.8375932,9637393.915127795
+Top 20 clients redeem in full,Concentration,311609069.9224654,0.05,328009547.2868057,16400477.364340285
+Top 50 clients redeem in full,Concentration,654041796.3462815,0.01,660648279.1376581,6606482.791376581
+Top 50 clients redeem in full,Concentration,654041796.3462815,0.03,674269893.1404965,20228096.794214893
+Top 50 clients redeem in full,Concentration,654041796.3462815,0.05,688465048.7855595,34423252.43927798
+Worst 1-day net outflow (ended 2020-12-01),Historical replay,0.0,0.01,0.0,0.0
+Worst 1-day net outflow (ended 2020-12-01),Historical replay,0.0,0.03,0.0,0.0
+Worst 1-day net outflow (ended 2020-12-01),Historical replay,0.0,0.05,0.0,0.0
+Worst 5-day net outflow (ended 2013-03-22),Historical replay,0.0,0.01,0.0,0.0
+Worst 5-day net outflow (ended 2013-03-22),Historical replay,0.0,0.03,0.0,0.0
+Worst 5-day net outflow (ended 2013-03-22),Historical replay,0.0,0.05,0.0,0.0
+Worst 20-day net outflow (ended 2012-03-30),Historical replay,0.0,0.01,0.0,0.0
+Worst 20-day net outflow (ended 2012-03-30),Historical replay,0.0,0.03,0.0,0.0
+Worst 20-day net outflow (ended 2012-03-30),Historical replay,0.0,0.05,0.0,0.0
+Global financial crisis: worst 5-day net outflow,Named episode,0.0,0.01,0.0,0.0
+Global financial crisis: worst 5-day net outflow,Named episode,0.0,0.03,0.0,0.0
+Global financial crisis: worst 5-day net outflow,Named episode,0.0,0.05,0.0,0.0
+Global financial crisis: worst 20-day net outflow,Named episode,0.0,0.01,0.0,0.0
+Global financial crisis: worst 20-day net outflow,Named episode,0.0,0.03,0.0,0.0
+Global financial crisis: worst 20-day net outflow,Named episode,0.0,0.05,0.0,0.0
+Euro-area debt crisis: worst 5-day net outflow,Named episode,0.0,0.01,0.0,0.0
+Euro-area debt crisis: worst 5-day net outflow,Named episode,0.0,0.03,0.0,0.0
+Euro-area debt crisis: worst 5-day net outflow,Named episode,0.0,0.05,0.0,0.0
+Euro-area debt crisis: worst 20-day net outflow,Named episode,0.0,0.01,0.0,0.0
+Euro-area debt crisis: worst 20-day net outflow,Named episode,0.0,0.03,0.0,0.0
+Euro-area debt crisis: worst 20-day net outflow,Named episode,0.0,0.05,0.0,0.0
+COVID-19 market shock: worst 5-day net outflow,Named episode,0.0,0.01,0.0,0.0
+COVID-19 market shock: worst 5-day net outflow,Named episode,0.0,0.03,0.0,0.0
+COVID-19 market shock: worst 5-day net outflow,Named episode,0.0,0.05,0.0,0.0
+COVID-19 market shock: worst 20-day net outflow,Named episode,0.0,0.01,0.0,0.0
+COVID-19 market shock: worst 20-day net outflow,Named episode,0.0,0.03,0.0,0.0
+COVID-19 market shock: worst 20-day net outflow,Named episode,0.0,0.05,0.0,0.0
+UK gilt / LDI crisis: worst 5-day net outflow,Named episode,0.0,0.01,0.0,0.0
+UK gilt / LDI crisis: worst 5-day net outflow,Named episode,0.0,0.03,0.0,0.0
+UK gilt / LDI crisis: worst 5-day net outflow,Named episode,0.0,0.05,0.0,0.0
+UK gilt / LDI crisis: worst 20-day net outflow,Named episode,0.0,0.01,0.0,0.0
+UK gilt / LDI crisis: worst 20-day net outflow,Named episode,0.0,0.03,0.0,0.0
+UK gilt / LDI crisis: worst 20-day net outflow,Named episode,0.0,0.05,0.0,0.0
+"1-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.01,0.0,0.0
+"1-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.03,0.0,0.0
+"1-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.05,0.0,0.0
+"1-day 99th pct, historical stress correlation",Segment tails,0.0,0.01,0.0,0.0
+"1-day 99th pct, historical stress correlation",Segment tails,0.0,0.03,0.0,0.0
+"1-day 99th pct, historical stress correlation",Segment tails,0.0,0.05,0.0,0.0
+"5-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.01,0.0,0.0
+"5-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.03,0.0,0.0
+"5-day 99th pct, all segments together (ρ=1)",Segment tails,0.0,0.05,0.0,0.0
+"5-day 99th pct, historical stress correlation",Segment tails,0.0,0.01,0.0,0.0
+"5-day 99th pct, historical stress correlation",Segment tails,0.0,0.03,0.0,0.0
+"5-day 99th pct, historical stress correlation",Segment tails,0.0,0.05,0.0,0.0
+Worst 5-day replay + top 10 full exit + known payables,Combined,175423947.48339522,0.01,177195906.54888406,1771959.0654888407
+Worst 5-day replay + top 10 full exit + known payables,Combined,175423947.48339522,0.03,180849430.3952528,5425482.9118575845
+Worst 5-day replay + top 10 full exit + known payables,Combined,175423947.48339522,0.05,184656786.82462656,9232839.341231328
+5-day segment tails (ρ=1) + top 10 full exit + known payables,Combined,169995308.3583452,0.01,171712432.68519717,1717124.3268519717
+5-day segment tails (ρ=1) + top 10 full exit + known payables,Combined,169995308.3583452,0.03,175252895.21478888,5257586.856443667
+5-day segment tails (ρ=1) + top 10 full exit + known payables,Combined,169995308.3583452,0.05,178942429.8508897,8947121.492544485
