@@ -6,6 +6,8 @@ whose target outcome is observed by the fitting cutoff enter training.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, asdict
+from concurrent.futures import ProcessPoolExecutor
 import json
 import shutil
 import tempfile
@@ -21,13 +23,12 @@ from .db import connect
 from .forecast import ROOT, Spec, predict
 
 OUTPUT = ROOT / 'data/clean/monthly_forecasts'
-VERSION = 'monthly-rf-v1'
+VERSION = 'monthly-history-v2'
 SEED = 42
 GRID = [(3, 6), (3, 12), (5, 6), (5, 12)]
 FEATURES = ['lead', 'month_sin', 'month_cos', 'previous', 'previous_2',
             'mean_3', 'mean_12', 'same_month_last_year']
-BASELINES = {'mean_12': Spec('mean', 12), 'weekday_12': Spec('weekday', 12),
-             'ridge_36': Spec('ridge', 36, 1.0)}
+BASELINES = {'mean_12': Spec('mean', 12), 'weekday_12': Spec('weekday', 12)}
 
 
 def monthly_history(history):
@@ -112,11 +113,12 @@ def baseline_predictions(series, values, months, origin):
 
 def add_derived(frame):
     """Coherent fund predictions and net flows, with identity preserved."""
-    keys = ['phase', 'origin', 'target_month', 'lead_month', 'model', 'target']
+    extra = ['horizon'] if 'horizon' in frame else []
+    keys = extra + ['phase', 'origin', 'target_month', 'lead_month', 'model', 'target']
     fund = frame[frame.scope == 'sector'].groupby(keys, as_index=False)[['actual', 'prediction']].sum(min_count=1)
     fund['scope'], fund['sector'] = 'fund', 'Whole fund'
     frame = pd.concat([frame, fund], ignore_index=True)
-    keys = ['scope','sector','phase','origin','target_month','lead_month','model']
+    keys = extra + ['scope','sector','phase','origin','target_month','lead_month','model']
     subs = frame[frame.target == 'subscriptions'].set_index(keys)
     reds = frame[frame.target == 'redemptions'].set_index(keys)
     net = subs[['actual','prediction']] - reds[['actual','prediction']]
@@ -126,133 +128,238 @@ def add_derived(frame):
 
 def summarise(frame):
     records = []
-    for key, g in frame.groupby(['scope','sector','target','model','lead_month']):
+    keys = (['horizon'] if 'horizon' in frame else []) + ['scope','sector','target','model','lead_month']
+    for key, g in frame.groupby(keys):
         errors = g.prediction-g.actual
         actual_scale = g.actual.abs().mean()
-        records.append(dict(zip(['scope','sector','target','model','lead_month'], key),
+        records.append(dict(zip(keys, key),
             origins=g.origin.nunique(), mae_gbp=errors.abs().mean(),
             bias_gbp=errors.mean(), mean_actual_gbp=g.actual.mean(),
             normalised_mae=errors.abs().mean()/actual_scale if actual_scale else np.nan,
             interval_coverage=((g.actual>=g.lower)&(g.actual<=g.upper)).mean(),
             mean_interval_width=(g.upper-g.lower).mean()))
     result = pd.DataFrame(records)
-    seasonal = result[result.model=='seasonal_naive'][['scope','sector','target','lead_month','mae_gbp']]
+    join_keys = [k for k in keys if k != 'model']
+    seasonal = result[result.model=='seasonal_naive'][join_keys+['mae_gbp']]
     result = result.merge(seasonal.rename(columns={'mae_gbp':'seasonal_mae_gbp'}),
-                          on=['scope','sector','target','lead_month'])
+                          on=join_keys)
     result['skill_vs_seasonal'] = 1-result.mae_gbp/result.seasonal_mae_gbp.replace(0,np.nan)
     return result
 
 
-def compute(history, fingerprint):
-    started = time.perf_counter()
-    monthly, months = monthly_history(history)
-    validation, calibration, evaluation = split_origins(len(months))
-    scopes = [('sector', s, history[history.client_sector==s])
-              for s in sorted(history.client_sector.unique())]
-    fund = history.groupby('date',as_index=False)[['subscriptions','redemptions']].sum()
-    scopes.append(('fund_direct','Whole fund',fund))
+@dataclass(frozen=True)
+class MonthlySpec:
+    model: str
+    history: str
+    alpha: float = 1.0
+    depth: int = 3
+    leaf: int = 6
+    half_life: float | None = None
+
+    @property
+    def window(self):
+        return 60 if self.history == 'rolling' else None
+
+
+def model_candidates(model):
+    for history in ('rolling', 'expanding', 'weighted'):
+        for half_life in ((1., 3., 5.) if history == 'weighted' else (None,)):
+            if model == 'ridge':
+                for alpha in (.1, 1., 10.):
+                    yield MonthlySpec(model, history, alpha=alpha, half_life=half_life)
+            else:
+                for depth, leaf in GRID:
+                    yield MonthlySpec(model, history, depth=depth, leaf=leaf, half_life=half_life)
+
+
+def history_examples(values, months, cutoff, window=None):
+    """Training targets lie within the window; feature lookbacks may precede it."""
+    xs, ys, ages = [], [], []
+    first_target = max(12, cutoff-window+1) if window is not None else 12
+    for origin in range(max(11, first_target-12), cutoff):
+        x = feature_rows(values, months, origin)
+        for lead in range(1, min(12, cutoff-origin)+1):
+            target = origin+lead
+            if target >= first_target:
+                xs.append(x[lead-1]); ys.append(values[target]); ages.append(cutoff-target)
+    if not ys:
+        raise ValueError('Insufficient eligible monthly examples')
+    return np.asarray(xs), np.asarray(ys), np.asarray(ages)
+
+
+def monthly_weights(ages, half_life):
+    if half_life is None:
+        return None
+    weights = np.exp2(-np.asarray(ages)/(12*half_life))
+    return weights/weights.mean()
+
+
+def history_prediction(series, values, months, origin, config, prepared=None):
+    if config.model == 'ridge':
+        dates = pd.date_range((months[origin]+1).start_time, (months[origin]+12).end_time.normalize())
+        daily, _ = predict(series, dates, months[origin].end_time.normalize(),
+                           Spec('ridge', config.window, config.alpha), config.half_life)
+        return pd.Series(daily, index=dates).groupby(dates.to_period('M')).sum().to_numpy()
+    x, y, ages = prepared if prepared is not None else history_examples(values, months, origin, config.window)
+    forest = RandomForestRegressor(n_estimators=200, max_depth=config.depth,
+        min_samples_leaf=config.leaf, random_state=SEED, n_jobs=1)
+    forest.fit(x, y, sample_weight=monthly_weights(ages, config.half_life))
+    return np.maximum(forest.predict(feature_rows(values, months, origin)), 0.)
+
+
+def selection_rank(paths, actual, horizon, order):
+    errors = np.asarray(paths)[:, :horizon]-np.asarray(actual)[:, :horizon]
+    return float(np.abs(errors.sum(axis=1)).mean()), float(np.abs(errors).mean()), order
+
+
+def _scope_comparison(args):
+    # Keep numerical kernels bounded while two independent scopes run concurrently.
+    from threadpoolctl import threadpool_limits
+    with threadpool_limits(limits=1):
+        return _scope_comparison_inner(args)
+
+
+def _scope_comparison_inner(args):
+    scope, sector, target, data, months, validation, calibration, evaluation = args
+    print(f'Monthly history comparison: {scope}/{sector}/{target}', flush=True)
+    series = data.set_index('date')[target].astype(float).sort_index()
+    series.index = pd.to_datetime(series.index)
+    values = series.groupby(series.index.to_period('M')).sum().reindex(months).to_numpy()
+    prepared, cached = {}, {}
+    def path(origin, config):
+        key = (origin, config)
+        if key not in cached:
+            examples = None
+            if config.model == 'random_forest':
+                example_key = (origin, config.window)
+                if example_key not in prepared:
+                    prepared[example_key] = history_examples(values, months, origin, config.window)
+                examples = prepared[example_key]
+            cached[key] = history_prediction(series, values, months, origin, config, examples)
+        return cached[key]
+    selected, candidates = {}, []
+    actual = np.asarray([values[o+1:o+13] for o in validation])
+    for family in ('random_forest', 'ridge'):
+        rankings = {h: [] for h in (1, 6, 12)}
+        for order, config in enumerate(model_candidates(family)):
+            paths = [path(origin, config) for origin in validation]
+            for horizon in rankings:
+                rank = selection_rank(paths, actual, horizon, order)
+                rankings[horizon].append((rank, config))
+                candidates.append(dict(scope=scope, sector=sector, target=target, horizon=horizon,
+                    **asdict(config), validation_total_mae=rank[0], validation_monthly_mae=rank[1], candidate_order=order))
+        for horizon, scores in rankings.items():
+            selected[(family, horizon)] = min(scores, key=lambda x:x[0])
     rows, selections = [], []
-    for scope, sector, data in scopes:
-        for target in ('subscriptions','redemptions'):
-            print(f'Monthly comparison: {sector} / {target}', flush=True)
-            series = data.set_index('date')[target].astype(float).sort_index()
-            values = series.groupby(series.index.to_period('M')).sum().reindex(months).to_numpy()
-            prepared = {}
+    for (family, horizon), (rank, config) in selected.items():
+        selections.append(dict(scope=scope, sector=sector, target=target, horizon=horizon,
+            **asdict(config), window_months=config.window, trees=200 if family=='random_forest' else None,
+            seed=SEED, validation_total_mae=rank[0], validation_monthly_mae=rank[1]))
+    for phase, origins in [('calibration', calibration), ('evaluation', evaluation), ('outlook', [len(months)-1])]:
+        for origin in origins:
+            baselines = baseline_predictions(series, values, months, origin)
+            # Retain the old fixed Ridge only as a historical reference artifact.
+            baselines.pop('ridge_36', None)
+            for horizon in (1, 6, 12):
+                predictions = {name:p for name,p in baselines.items()}
+                for family in ('random_forest', 'ridge'):
+                    predictions[family] = path(origin, selected[(family, horizon)][1])
+                for model, predicted in predictions.items():
+                    for lead in range(1, horizon+1):
+                        rows.append(dict(scope=scope, sector=sector, target=target, horizon=horizon,
+                            phase=phase, origin=str(months[origin]), lead_month=lead,
+                            target_month=str(months[origin]+lead), model=model,
+                            prediction=float(predicted[lead-1]), actual=float(values[origin+lead])
+                            if origin+lead < len(values) else np.nan))
+    return rows, selections, candidates
 
-            def forecast_at(origin, setting):
-                if origin not in prepared:
-                    prepared[origin] = training_examples(values, months, origin)
-                return forest_prediction(values, months, origin, setting, prepared[origin])
 
-            scores = []
-            for setting in GRID:
-                errors = []
-                for origin in validation:
-                    predicted = forecast_at(origin, setting)
-                    errors.extend(np.abs(predicted-values[origin+1:origin+13]))
-                scores.append((float(np.mean(errors)), setting))
-            score, setting = min(scores)
-            selections.append(dict(scope=scope,sector=sector,target=target,
-                max_depth=setting[0],min_samples_leaf=setting[1],validation_mae=score,
-                n_estimators=200,random_seed=SEED,training_window_months=120))
-            phases = [('calibration',calibration),('evaluation',evaluation),('outlook',[len(months)-1])]
-            for phase, origins in phases:
-                for origin in origins:
-                    predictions = baseline_predictions(series,values,months,origin)
-                    predictions['random_forest'] = forecast_at(origin,setting)
-                    for model, path in predictions.items():
-                        for lead, prediction in enumerate(path,1):
-                            rows.append(dict(scope=scope,sector=sector,target=target,
-                                phase=phase,origin=str(months[origin]),lead_month=lead,
-                                target_month=str(months[origin]+lead),model=model,
-                                prediction=float(prediction),actual=float(values[origin+lead])
-                                if origin+lead<len(values) else np.nan))
+def compute(history, fingerprint, workers=2):
+    started = time.perf_counter()
+    history = history.copy()
+    history['date'] = pd.to_datetime(history.date)
+    _, months = monthly_history(history)
+    validation, calibration, evaluation = split_origins(len(months))
+    scopes = [('sector', s, history[history.client_sector==s]) for s in sorted(history.client_sector.unique())]
+    scopes.append(('fund_direct', 'Whole fund', history.groupby('date', as_index=False)[['subscriptions','redemptions']].sum()))
+    jobs = [(scope, sector, target, data, months, validation, calibration, evaluation)
+            for scope, sector, data in scopes for target in ('subscriptions','redemptions')]
+    if workers == 1:
+        results = list(map(_scope_comparison, jobs))
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            results = list(executor.map(_scope_comparison, jobs))
+    rows = [r for result in results for r in result[0]]
+    selections = [r for result in results for r in result[1]]
+    candidates = [r for result in results for r in result[2]]
     detail = add_derived(pd.DataFrame(rows))
-    # Calibration is after model selection and complete before first test origin.
-    keys = ['scope','sector','target','model','lead_month']
-    calibration_frame = detail[detail.phase=='calibration'].copy()
-    calibration_frame['error'] = calibration_frame.actual-calibration_frame.prediction
-    quantiles = calibration_frame.groupby(keys).error.quantile([.1,.9]).unstack().reset_index()
-    quantiles = quantiles.rename(columns={.1:'error_lower',.9:'error_upper'})
-    detail = detail.merge(quantiles,on=keys,validate='many_to_one')
-    detail['lower'] = detail.prediction+detail.error_lower
-    detail['upper'] = detail.prediction+detail.error_upper
-    amount = detail.target != 'net_flow'
-    detail.loc[amount,['lower','upper']] = detail.loc[amount,['lower','upper']].clip(lower=0)
-    metrics = summarise(detail[detail.phase=='evaluation'])
-    # Preserve actual aggregate errors; do not sum absolute errors or bounds.
-    totals = []
-    for horizon in (6,12):
-        selected = detail[detail.lead_month<=horizon]
-        grouped = selected.groupby(['scope','sector','target','model','phase','origin'])
-        sums = grouped[['actual','prediction']].sum(min_count=1)
-        counts = grouped.size()
-        sums = sums[counts==horizon].reset_index()
-        sums['lead_month'] = horizon
-        totals.append(sums)
-    cumulative = pd.concat(totals,ignore_index=True)
-    cal = cumulative[cumulative.phase=='calibration'].copy()
-    cal['error'] = cal.actual-cal.prediction
-    quantiles = cal.groupby(keys).error.quantile([.1,.9]).unstack().reset_index().rename(columns={.1:'error_lower',.9:'error_upper'})
-    cumulative = cumulative.merge(quantiles,on=keys,validate='many_to_one')
-    cumulative['lower'] = cumulative.prediction+cumulative.error_lower
-    cumulative['upper'] = cumulative.prediction+cumulative.error_upper
-    mask = cumulative.target!='net_flow'
-    cumulative.loc[mask,['lower','upper']] = cumulative.loc[mask,['lower','upper']].clip(lower=0)
-    cumulative_metrics = summarise(cumulative[cumulative.phase=='evaluation'])
-    metadata = dict(version=VERSION,source_fingerprint=fingerprint,features=FEATURES,
-        grid=GRID,seed=SEED,training_window_months=120,
-        complete_coverage_start=str(months[0]),complete_coverage_end=str(months[-1]),
-        observation_cutoff=str(pd.to_datetime(history.date).max().date()),
-        forecast_origin=str(months[-1]),
+    keys = ['horizon','scope','sector','target','model','lead_month']
+    def calibrate_ranges(frame):
+        cal = frame[frame.phase=='calibration'].copy()
+        cal['error'] = cal.actual-cal.prediction
+        quantiles = cal.groupby(keys).error.quantile([.1,.9]).unstack().reset_index().rename(columns={.1:'error_lower',.9:'error_upper'})
+        result = frame.merge(quantiles, on=keys, validate='many_to_one')
+        result['lower'] = result.prediction+result.error_lower
+        result['upper'] = result.prediction+result.error_upper
+        mask = result.target!='net_flow'
+        result.loc[mask,['lower','upper']] = result.loc[mask,['lower','upper']].clip(lower=0)
+        return result
+    detail = calibrate_ranges(detail)
+    keys_total = ['horizon','scope','sector','target','model','phase','origin']
+    cumulative = detail.groupby(keys_total, as_index=False)[['actual','prediction']].sum(min_count=1)
+    cumulative['lead_month'] = cumulative.horizon
+    cumulative = calibrate_ranges(cumulative)
+    metadata = dict(version=VERSION, source_fingerprint=fingerprint, features=FEATURES,
+        grid=GRID, seed=SEED, history_candidates=['rolling60','expanding','weighted_expanding'],
+        half_life_candidates=[1,3,5], ridge_alpha_candidates=[.1,1,10], horizons=[1,6,12],
+        complete_coverage_start=str(months[0]), complete_coverage_end=str(months[-1]),
+        observation_cutoff=str(history.date.max().date()), forecast_origin=str(months[-1]),
         validation_origins=[str(months[i]) for i in validation],
         calibration_origins=[str(months[i]) for i in calibration],
-        evaluation_origins=[str(months[i]) for i in evaluation],
-        interval_level=.8,duration_seconds=time.perf_counter()-started,
-        notes=['Retrospective research; historical results were reviewed previously.',
-               'Overlapping horizons share target outcomes and are not independent.',
-               'Calibration has 12 origins per lead; empirical interval estimates are imprecise.',
-               'Daily current-month observations are excluded from monthly models until month is complete.',
-               'Fixed baseline specifications: mean12, weekday12, ridge36 alpha1; no exhaustive baseline tuning.',
-               'Forest hyperparameters selected by mean monthly absolute error across leads 1–12.',
-               'Training examples share outcomes across leads; row count exceeds independent monthly observations.'])
-    return dict(detail=detail,metrics=metrics,cumulative=cumulative,
-                cumulative_metrics=cumulative_metrics,models=pd.DataFrame(selections),metadata=metadata)
+        evaluation_origins=[str(months[i]) for i in evaluation], interval_level=.8,
+        duration_seconds=time.perf_counter()-started,
+        selection='validation cumulative-total MAE, mean monthly MAE, deterministic candidate order',
+        notes=['Retrospective synthetic-data research; previous outcomes were reviewed.',
+               'Fund paths sum sector predictions; direct fund fits are separate comparisons.',
+               'Each horizon uses its own selected configuration within each family.',
+               'Only training targets available at cutoff are eligible; forests weight target-month age.',
+               'Calibration has 12 origins per lead; intervals are imprecise and not guaranteed.',
+               'Overlapping evaluation paths are dependent.',
+               'Fund performance features are excluded.'])
+    return dict(detail=detail, metrics=summarise(detail[detail.phase=='evaluation']),
+        cumulative=cumulative, cumulative_metrics=summarise(cumulative[cumulative.phase=='evaluation']),
+        models=pd.DataFrame(selections), candidate_scores=pd.DataFrame(candidates), metadata=metadata)
 
 
 def run(output=OUTPUT):
     with connect() as con:
         history = con.execute('SELECT date,client_sector,subscriptions,redemptions FROM daily_sector ORDER BY date,client_sector').df()
         fingerprint = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()[0]
+    references = {}
+    existing = Path(output)
+    if (existing/'metadata.json').exists():
+        previous_meta = json.loads((existing/'metadata.json').read_text())
+        if previous_meta['source_fingerprint'] != fingerprint:
+            raise ValueError('Previous monthly comparison uses a different source import')
+        prefix = '' if previous_meta.get('version') != VERSION else 'previous_'
+        for name in ('metrics', 'cumulative_metrics', 'models'):
+            if (existing/f'{prefix}{name}.csv').exists():
+                references['previous_'+name] = pd.read_csv(existing/f'{prefix}{name}.csv')
+        if prefix:
+            if (existing/'previous_metadata.json').exists():
+                references['previous_metadata'] = json.loads((existing/'previous_metadata.json').read_text())
+        else:
+            references['previous_metadata'] = previous_meta
     result = compute(history,fingerprint)
+    result.update(references)
     output = Path(output)
     output.parent.mkdir(parents=True,exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix='monthly-',dir=output.parent))
     backup = output.with_name(output.name+'.backup-'+uuid.uuid4().hex)
     try:
         for name, value in result.items():
-            if name=='metadata':
-                (stage/'metadata.json').write_text(json.dumps(value,indent=2)+'\n')
+            if isinstance(value, dict):
+                (stage/f'{name}.json').write_text(json.dumps(value,indent=2)+'\n')
             else:
                 value.to_csv(stage/f'{name}.csv',index=False)
         if output.exists():

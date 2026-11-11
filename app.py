@@ -62,12 +62,6 @@ def query(fingerprint, version, sql, params=()):
         return connection.execute(sql, list(params)).fetchdf()
 
 
-@st.cache_data(show_spinner=False, max_entries=2)
-def forecast_data(source_identity, artifact_identity):
-    from fund_analytics.forecast import load_forecasts
-    return load_forecasts()
-
-
 def table_export(frame, name):
     st.dataframe(frame, hide_index=True, use_container_width=True)
     st.download_button('Download this table · CSV', frame.to_csv(index=False).encode(),
@@ -97,95 +91,218 @@ def lines(frame, x='date', columns=('subscriptions', 'redemptions'), title=None)
 @st.cache_data(show_spinner=False, max_entries=2)
 def monthly_artifacts(artifact_identity):
     path = ROOT / 'data/clean/monthly_forecasts'
+    meta = json.loads((path/'metadata.json').read_text())
+    if meta.get('version') != 'monthly-history-v2':
+        raise ValueError('Regenerate monthly forecasts for the current comparison format.')
     tables = {name: pd.read_csv(path/f'{name}.csv') for name in
-              ('detail','metrics','cumulative','cumulative_metrics','models')}
-    tables['metadata'] = json.loads((path/'metadata.json').read_text())
+              ('detail', 'metrics', 'cumulative', 'cumulative_metrics', 'models')}
+    if any('horizon' not in frame for frame in tables.values()):
+        raise ValueError('Monthly forecast artifacts do not contain horizon selections.')
+    tables['metadata'] = meta
     return tables
 
 
-def monthly_view(source_fingerprint, sectors):
-    st.caption('Monthly model comparison · retrospective research · cash flows')
-    path = ROOT / 'data/clean/monthly_forecasts'
-    if not (path/'metadata.json').exists():
-        st.info('Generate the monthly comparison before opening this view.')
+@st.cache_data(show_spinner=False, max_entries=2)
+def selected_artifacts(artifact_identity):
+    path = ROOT / 'data/clean/selected_forecasts'
+    meta = json.loads((path/'metadata.json').read_text())
+    if meta.get('version') != 'selected-history-v2':
+        raise ValueError('Regenerate daily forecasts for the current comparison format.')
+    data = {name: pd.read_csv(path/f'{name}.csv') for name in ('daily', 'metrics', 'models')}
+    if any('model' not in frame for frame in data.values()):
+        raise ValueError('Daily forecast artifacts do not contain model selections.')
+    data['metadata'] = meta
+    return data
+
+
+def artifact_stamp(path):
+    return tuple((p.name, p.stat().st_mtime_ns, p.stat().st_size)
+                 for p in sorted(path.glob('*')) if p.is_file())
+
+
+def daily_comparison_view(source_fingerprint, observation_cutoff):
+    try:
+        data = selected_artifacts(artifact_stamp(ROOT / 'data/clean/selected_forecasts'))
+    except (FileNotFoundError, OSError, ValueError, KeyError):
+        st.info('Generate the newer daily model comparison before opening this view.')
+        st.code('venv/bin/python -m fund_analytics selected-forecast', language='bash')
+        return
+    meta = data['metadata']
+    if meta.get('source_fingerprint') != source_fingerprint or meta.get('cutoff') != str(observation_cutoff):
+        st.warning('The daily outlook belongs to an earlier import or cutoff. Regenerate it.')
+        st.code('venv/bin/python -m fund_analytics selected-forecast', language='bash')
+        return
+    st.caption(f"Whole-fund cash forecasts · {meta['forecast_month']} · observations through {meta['cutoff']}. "
+               'Daily sector forecasts are not part of this comparison.')
+    target = st.radio('Daily flow target', list(LABELS), format_func=LABELS.get, horizontal=True)
+    labels = {'random_forest': 'Random Forest', 'ridge': 'Ridge regression'}
+    model = st.selectbox('Daily model', list(labels), format_func=labels.get)
+    frame = data['daily'][(data['daily'].target == target) & (data['daily'].model == model)].copy()
+    metrics = data['metrics'][(data['metrics'].objective == 'daily') &
+                              (data['metrics'].target == target) & (data['metrics'].model == model)]
+    if frame.empty or metrics.empty:
+        st.info('No daily forecast is available for this model and flow.')
+        return
+    metric = metrics.iloc[0]
+    targets = ['subscriptions', 'redemptions'] if target == 'net_flow' else [target]
+    settings = data['models'][(data['models'].objective == 'daily') &
+                              (data['models'].model == model) & data['models'].target.isin(targets)]
+    histories = {'rolling': 'five-year rolling history', 'expanding': 'expanding history',
+                 'weighted': 'recency-weighted expanding history'}
+    names = ', '.join(histories.get(h, h) for h in settings.history.dropna().unique())
+    st.subheader(labels[model])
+    st.caption(f'Selected by daily error · {names} · calendar features. '
+               'Net flows subtract the selected subscription and redemption forecasts.')
+    a, b, c = st.columns(3)
+    a.metric('Sum of daily estimates', money(frame.prediction.sum()))
+    b.metric('Historical daily MAE', money(metric.assessment_mae_gbp))
+    c.metric('Observed range coverage', f'{metric.coverage:.1%}')
+    st.caption(f"Historical assessment: {meta['assessment_months'][0]} to {meta['assessment_months'][-1]} · "
+               f"{int(metric.assessment_cases):,} outcomes. Retrospective synthetic-data evidence.")
+    frequency = st.radio('Daily display', ['Daily', 'Weekly'], horizontal=True)
+    show_ranges = st.checkbox('Show indicative 80% range diagnostics', value=False, key='daily_ranges')
+    frame['date'] = pd.to_datetime(frame.date)
+    if frequency == 'Weekly':
+        frame['date'] = frame.date.dt.to_period('W-SUN').dt.start_time
+        frame = frame.groupby('date', as_index=False).prediction.sum()
+        st.caption('Weekly values sum forecast days inside the month; boundary weeks may be partial. Weekly ranges are unavailable.')
+    elif show_ranges:
+        st.warning(f'These ranges captured {metric.coverage:.1%} of historical outcomes against an 80% target. '
+                   'Observed coverage is not a guarantee for future forecasts.')
+        st.caption(f"Calibrated on {int(metric.calibration_cases):,} earlier errors from "
+                   f"{meta['calibration_months'][0]} to {meta['calibration_months'][-1]}.")
+    fig = go.Figure()
+    if show_ranges and frequency == 'Daily':
+        fig.add_trace(go.Scatter(x=frame.date, y=frame.upper, line=dict(width=0), showlegend=False, hoverinfo='skip'))
+        fig.add_trace(go.Scatter(x=frame.date, y=frame.lower, line=dict(width=0), fill='tonexty',
+                                fillcolor='rgba(22,135,124,.15)', name='Indicative 80% range'))
+    fig.add_trace(go.Scatter(x=frame.date, y=frame.prediction, mode='lines+markers',
+                            line=dict(color=COLORS[target], width=3), name=labels[model]))
+    fig.update_yaxes(title='GBP')
+    chart(fig)
+    st.subheader('Daily model comparison')
+    table_export(data['metrics'][(data['metrics'].objective == 'daily') &
+                                 (data['metrics'].target == target)], 'daily_model_metrics')
+    with st.expander('Daily forecast values, model settings and provenance'):
+        export = frame if show_ranges else frame.drop(columns=['lower', 'upper'], errors='ignore')
+        table_export(export, 'daily_forecast_values')
+        st.dataframe(settings, hide_index=True)
+        st.json(meta)
+
+
+def monthly_view(source_fingerprint, sectors, observation_cutoff):
+    st.subheader('Monthly model comparison')
+    resolution = st.radio('Forecast resolution', ['Daily next month', 'Monthly'], horizontal=True)
+    if resolution == 'Daily next month':
+        daily_comparison_view(source_fingerprint, observation_cutoff)
+        return
+    st.caption('Monthly cash-flow paths · models selected by cumulative-total error · retrospective research')
+    try:
+        data = monthly_artifacts(artifact_stamp(ROOT / 'data/clean/monthly_forecasts'))
+    except (FileNotFoundError, OSError, ValueError, KeyError):
+        st.info('Generate the updated monthly comparison before opening this view.')
         st.code('venv/bin/python -m fund_analytics monthly-forecast', language='bash')
         return
-    stamp = tuple((p.name,p.stat().st_mtime_ns,p.stat().st_size) for p in sorted(path.glob('*')) if p.is_file())
-    data = monthly_artifacts(stamp)
     meta = data['metadata']
-    if meta['source_fingerprint'] != source_fingerprint:
-        st.warning('Monthly results belong to an older import. Regenerate them.')
+    if meta.get('source_fingerprint') != source_fingerprint or meta.get('observation_cutoff') != str(observation_cutoff):
+        st.warning('Monthly results belong to an older import or observation cutoff. Regenerate them.')
+        st.code('venv/bin/python -m fund_analytics monthly-forecast', language='bash')
         return
-    scope = st.selectbox('Monthly forecast scope',['Whole fund']+sectors)
-    scope_type = 'fund' if scope=='Whole fund' else 'sector'
-    target = st.radio('Monthly flow target',list(LABELS),format_func=LABELS.get,horizontal=True)
-    horizon = st.radio('Months ahead',[6,12],horizontal=True)
-    labels = {'random_forest':'Constrained random forest','seasonal_naive':'Same month last year',
-              'mean_12':'Recent average','weekday_12':'Weekday average','ridge_36':'Ridge regression'}
-    model = st.selectbox('Model',list(labels),format_func=labels.get)
+    scope = st.selectbox('Monthly forecast scope', ['Whole fund'] + sectors)
+    scope_type = 'fund' if scope == 'Whole fund' else 'sector'
+    target = st.radio('Monthly flow target', list(LABELS), format_func=LABELS.get, horizontal=True)
+    horizon = st.radio('Months ahead', [1, 6, 12], horizontal=True)
+    labels = {'random_forest': 'Random Forest', 'ridge': 'Ridge regression',
+              'seasonal_naive': 'Same month last year', 'mean_12': 'Recent average',
+              'weekday_12': 'Weekday average'}
+    model = st.selectbox('Model', ['random_forest', 'ridge'], format_func=labels.get)
+    benchmark = st.selectbox('Benchmark', ['seasonal_naive', 'mean_12', 'weekday_12'], format_func=labels.get)
+    show_ranges = st.checkbox('Show indicative 80% range diagnostics', value=False, key='monthly_ranges')
 
     def selected(frame):
-        return frame[(frame.scope==scope_type)&(frame.sector==scope)&(frame.target==target)&
-                     (frame.lead_month<=horizon)].copy()
+        return frame[(frame.scope == scope_type) & (frame.sector == scope) &
+                     (frame.target == target) & (frame.horizon == horizon) &
+                     (frame.lead_month <= horizon)].copy()
 
     outlook = selected(data['detail'])
-    outlook = outlook[(outlook.phase=='outlook')&(outlook.model==model)].sort_values('lead_month')
-    st.caption(f"Forecast origin: end of {meta['forecast_origin']} · observed data through {meta['observation_cutoff']}. "
-               'Only complete months enter this model; later partial-month observations are excluded.')
+    outlook = outlook[(outlook.phase == 'outlook') & (outlook.model == model)].sort_values('lead_month')
     if outlook.empty:
         st.info('No monthly outlook is available for this selection.')
         return
+    st.caption(f"Forecast origin: end of {meta['forecast_origin']} · observed data through {meta['observation_cutoff']}. "
+               'Only complete months enter these models; later partial-month observations are excluded.')
+    component_targets = ['subscriptions', 'redemptions'] if target == 'net_flow' else [target]
+    models = data['models']
+    mask = models.target.isin(component_targets) & (models.scope == 'sector') & (models.model == model) & (models.horizon == horizon)
+    if scope_type == 'sector':
+        mask &= models.sector == scope
+    settings = models[mask]
+    if not settings.empty:
+        descriptions = {'rolling': 'Five-year rolling', 'expanding': 'Expanding', 'weighted': 'Recency-weighted expanding'}
+        counts = settings.history.value_counts()
+        summary = '; '.join(f'{descriptions.get(name, name)}: {count}' for name, count in counts.items())
+        st.caption(f'Selected configurations · {summary}. Settings are shown below.')
+    if scope_type == 'fund':
+        st.caption('Whole-fund paths sum independently selected sector forecasts. Selection is made within each model family.')
     outlook['date'] = pd.to_datetime(outlook.target_month)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=outlook.date,y=outlook.upper,line=dict(width=0),showlegend=False,hoverinfo='skip'))
-    fig.add_trace(go.Scatter(x=outlook.date,y=outlook.lower,line=dict(width=0),fill='tonexty',
-                  fillcolor='rgba(22,135,124,.15)',name='Indicative 80% monthly range'))
-    fig.add_trace(go.Scatter(x=outlook.date,y=outlook.prediction,mode='lines+markers',name=labels[model]))
-    seasonal = selected(data['detail'])
-    seasonal = seasonal[(seasonal.phase=='outlook')&(seasonal.model=='seasonal_naive')].sort_values('lead_month')
-    if model!='seasonal_naive':
-        fig.add_trace(go.Scatter(x=pd.to_datetime(seasonal.target_month),y=seasonal.prediction,
-                      line=dict(dash='dot'),name='Same month last year'))
+    if show_ranges:
+        if len(outlook) == 1:
+            fig.add_trace(go.Scatter(x=[outlook.date.iloc[0]] * 2,
+                y=[outlook.lower.iloc[0], outlook.upper.iloc[0]], mode='lines',
+                line=dict(width=5), name='Indicative 80% monthly range'))
+        else:
+            fig.add_trace(go.Scatter(x=outlook.date, y=outlook.upper, line=dict(width=0), showlegend=False, hoverinfo='skip'))
+            fig.add_trace(go.Scatter(x=outlook.date, y=outlook.lower, line=dict(width=0), fill='tonexty',
+                                    fillcolor='rgba(22,135,124,.15)', name='Indicative 80% monthly range'))
+    fig.add_trace(go.Scatter(x=outlook.date, y=outlook.prediction, mode='lines+markers', name=labels[model]))
+    comparison = selected(data['detail'])
+    comparison = comparison[(comparison.phase == 'outlook') & (comparison.model == benchmark)].sort_values('lead_month')
+    fig.add_trace(go.Scatter(x=pd.to_datetime(comparison.target_month), y=comparison.prediction,
+                            line=dict(dash='dot'), name=labels[benchmark]))
     fig.update_yaxes(title='Monthly total · GBP')
     chart(fig)
-    st.caption('Empirical ranges use 12 calibration origins per lead. Historical forecast windows overlap, '
-               'so observations are dependent. These ranges are indicative and estimates are experimental.')
     totals = selected(data['cumulative'])
-    totals = totals[(totals.phase=='outlook')&(totals.model==model)&(totals.lead_month==horizon)]
+    totals = totals[(totals.phase == 'outlook') & (totals.model == model) & (totals.lead_month == horizon)]
+    total_metrics = selected(data['cumulative_metrics'])
+    chosen_total = total_metrics[(total_metrics.model == model) & (total_metrics.lead_month == horizon)]
     if not totals.empty:
         row = totals.iloc[0]
         cols = st.columns(3)
-        cols[0].metric(f'{horizon}-month total',money(row.prediction))
-        cols[1].metric('Indicative lower total',money(row.lower))
-        cols[2].metric('Indicative upper total',money(row.upper))
-        st.caption('Total ranges are calibrated from total forecast errors, not summed monthly bounds.')
-    st.subheader('Historical model comparison')
+        cols[0].metric(f'{horizon}-month total', money(row.prediction))
+        if not chosen_total.empty:
+            cols[1].metric('Historical total MAE', money(chosen_total.mae_gbp.iloc[0]))
+            cols[2].metric('Observed total-range coverage', f'{chosen_total.interval_coverage.iloc[0]:.1%}')
+        if show_ranges:
+            st.caption(f'Total range: {money(row.lower)} to {money(row.upper)}. '
+                       'Calibrated from cumulative forecast errors, not summed monthly bounds.')
     metrics = selected(data['metrics'])
+    chosen = metrics[metrics.model == model]
+    if show_ranges:
+        if not chosen.empty:
+            st.warning(f"Historical monthly range coverage varies from {chosen.interval_coverage.min():.1%} "
+                       f"to {chosen.interval_coverage.max():.1%} against an 80% target. These are indicative diagnostics.")
+        st.caption('Ranges use 12 calibration origins per lead. Historical forecast windows overlap; '
+                   'calibration estimates are imprecise and are not reliable probability guarantees.')
+    st.subheader('Historical model and benchmark comparison')
     curve = metrics.copy()
     curve['Method'] = curve.model.map(labels)
-    chart(px.line(curve,x='lead_month',y='mae_gbp',color='Method',markers=True,
-                  labels={'lead_month':'Months ahead','mae_gbp':'Mean absolute monthly error · GBP'}))
-    chosen = metrics[metrics.model==model]
-    if chosen.skill_vs_seasonal.isna().any():
-        st.info('Some relative scores are unavailable because the baseline error is zero.')
-    if (chosen.skill_vs_seasonal<0).any():
-        st.warning('This model has larger historical errors than the seasonal baseline at some displayed leads. '
-                   'Use the comparison below before relying on the outlook.')
-    if (chosen.interval_coverage<.8).any():
-        st.warning('The nominal 80% ranges captured fewer than 80% of historical outcomes at some leads. '
-                   'Their observed coverage is shown below; they may understate uncertainty.')
-    table_export(metrics,'monthly_model_metrics')
-    st.subheader('Errors in six- and twelve-month totals')
-    table_export(selected(data['cumulative_metrics']),'monthly_total_metrics')
-    with st.expander('Monthly predictions, model configuration and provenance'):
-        table_export(outlook.drop(columns='date'),'monthly_outlook')
-        models = data['models']
-        # The fund is a sum of sector models; show constituent configurations.
-        component_targets = ['subscriptions','redemptions'] if target=='net_flow' else [target]
-        mask = models.target.isin(component_targets) & (models.scope=='sector')
-        if scope_type=='sector':
-            mask &= models.sector==scope
-        st.dataframe(models[mask],hide_index=True)
+    chart(px.line(curve, x='lead_month', y='mae_gbp', color='Method', markers=True,
+                  labels={'lead_month': 'Months ahead', 'mae_gbp': 'Mean absolute monthly error · GBP'}))
+    if not chosen_total.empty and (chosen_total.skill_vs_seasonal < 0).any():
+        st.warning('The selected model has larger historical cumulative errors than the seasonal benchmark. '
+                   'Family selection does not guarantee a benchmark improvement.')
+    table_export(metrics, 'monthly_model_metrics')
+    st.subheader(f'Historical {horizon}-month total errors')
+    table_export(total_metrics, 'monthly_total_metrics')
+    with st.expander('Monthly predictions, selected configurations and provenance'):
+        export = outlook.drop(columns='date')
+        if not show_ranges:
+            export = export.drop(columns=['lower', 'upper'], errors='ignore')
+        table_export(export, 'monthly_outlook')
+        parameter_columns = ['alpha'] if model == 'ridge' else ['depth', 'leaf', 'trees', 'seed']
+        setting_columns = ['sector', 'target', 'horizon', 'history', 'window_months', 'half_life'] + parameter_columns
+        st.dataframe(settings[[column for column in setting_columns if column in settings]], hide_index=True)
         st.json(meta)
 
 
@@ -436,96 +553,17 @@ elif page == 'Client behaviour':
             table_export(histories, 'client_histories')
 
 elif page == 'Forecasts':
-    view = st.radio('Forecast workspace',['Next-month forecast','Monthly model comparison'],horizontal=True)
-    if view=='Monthly model comparison':
-        fingerprint = str(manifest.iloc[-1]['fingerprint'])
-        monthly_view(fingerprint,sectors)
-        st.stop()
-    st.caption('Cash movements only · separate subscription and redemption models · sector forecasts sum to the whole fund.')
-    try:
-        artifact_identity = tuple((p.name, p.stat().st_mtime_ns, p.stat().st_size)
-                                  for p in sorted((ROOT / 'data/clean/forecasts').glob('*')) if p.is_file())
-        artifacts = forecast_data(identity, artifact_identity)
-    except (ImportError, FileNotFoundError, OSError, ValueError) as exc:
-        st.info('Forecasts have not been generated yet. Generate them after importing the database.')
-        st.code('venv/bin/python -m fund_analytics forecast', language='bash')
-        st.stop()
-    metadata = artifacts.get('metadata', {})
-    current_fingerprint = next((str(manifest.iloc[-1][field]) for field in ('source_fingerprint', 'fingerprint') if field in manifest.columns and not manifest.empty), None)
-    if metadata.get('source_fingerprint') and current_fingerprint and metadata['source_fingerprint'] != current_fingerprint:
-        st.warning('Forecasts were generated from a different data import. Regenerate them before using this outlook.')
-        st.stop()
-    scope = st.selectbox('Forecast scope', ['Whole fund'] + sectors)
-    target = st.radio('Target', list(LABELS), format_func=LABELS.get, horizontal=True)
-    scope_name = 'fund' if scope == 'Whole fund' else 'sector'
-
-    def scoped(frame, include_target=True):
-        if frame is None or frame.empty:
-            return pd.DataFrame()
-        mask = (frame.scope == scope_name) & (frame.sector == scope)
-        if include_target and 'target' in frame:
-            mask &= frame.target == target
-        return frame.loc[mask].copy()
-
-    daily = scoped(artifacts.get('daily'))
-    monthly = scoped(artifacts.get('monthly'))
-    if daily.empty:
-        st.info('No forecast is available for this selection.')
-        st.stop()
-    st.caption('Observation cutoff: ' + str(metadata.get('cutoff', metadata.get('observation_cutoff', 'See model details'))))
-    if not monthly.empty:
-        row = monthly.iloc[0]
-        a, b, c = st.columns(3)
-        a.metric('Next-month estimate', money(row.prediction))
-        b.metric('Indicative lower bound', money(row.lower))
-        c.metric('Indicative upper bound', money(row.upper))
-    daily['date'] = pd.to_datetime(daily.date)
-    frequency = st.radio('Forecast display', ['Daily', 'Weekly', 'Monthly'], horizontal=True)
-    display = daily.copy()
-    if frequency == 'Weekly':
-        display['period'] = display.date.dt.to_period('W-SUN').dt.start_time
-        display = display.groupby('period', as_index=False)[['prediction', 'lower', 'upper']].sum()
-        x_column = 'period'
-    elif frequency == 'Monthly' and not monthly.empty:
-        display = monthly.copy()
-        display['period'] = pd.to_datetime(display.month)
-        x_column = 'period'
-    else:
-        x_column = 'date'
-    figure = go.Figure()
-    figure.add_trace(go.Scatter(x=display[x_column], y=display.upper, mode='lines', line=dict(width=0), showlegend=False, hoverinfo='skip'))
-    figure.add_trace(go.Scatter(x=display[x_column], y=display.lower, mode='lines', line=dict(width=0), fill='tonexty', fillcolor='rgba(22,135,124,.15)', name='Indicative range'))
-    figure.add_trace(go.Scatter(x=display[x_column], y=display.prediction, mode='lines+markers', line=dict(color=COLORS[target], width=3), name=LABELS[target]))
-    figure.update_yaxes(title='GBP')
-    figure.update_xaxes(title=frequency)
-    chart(figure)
-    if frequency == 'Weekly':
-        st.caption('Weekly amounts sum the daily predictions. The displayed weekly bounds sum daily bounds, so treat them as indicative only.')
-    st.caption('Ranges are calibrated from past out-of-sample errors. They are indicative, not guaranteed. Monthly ranges are calibrated separately and are not the sum of daily bounds.')
-    st.subheader('Historical evaluation')
-    metrics = scoped(artifacts.get('metrics'))
-    if not metrics.empty:
-        table_export(metrics, 'forecast_metrics')
-    else:
-        st.info('Historical evaluation is unavailable for this selection.')
-    with st.expander('Forecast values and model details'):
-        table_export(display, f'forecast_{frequency.lower()}')
-        models = artifacts.get('models', pd.DataFrame())
-        if not models.empty:
-            if scope_name == 'sector':
-                models = models[models.sector == scope]
-            st.dataframe(models, hide_index=True)
-        st.json(metadata)
-    upcoming = q('''SELECT payment_date, payment_status, sum(distribution_gbp) AS scheduled_distribution_gbp
-        FROM income_distributions d JOIN clients c USING(client_id)
-        WHERE payment_status = 'Declared' AND payment_date > ? AND (? = 'Whole fund' OR client_sector = ?)
-        GROUP BY 1,2 ORDER BY 1''', [maximum, scope, scope])
-    st.subheader('Scheduled income distributions')
-    st.caption('Separate obligations, excluded from predicted client redemptions. Historical schedule availability is unknown; these schedules are not used in backtests.')
-    if upcoming.empty:
-        st.info('No declared future income payments for this scope.')
-    else:
-        table_export(upcoming, 'scheduled_distributions')
+    monthly_view(str(manifest.iloc[-1]['fingerprint']), sectors, maximum)
+    with st.expander('Scheduled income distributions · whole fund'):
+        st.caption('Declared payments are separate obligations and are excluded from predicted client redemptions. '
+                   'Historical schedule availability is unknown; these schedules are not used in backtests.')
+        upcoming = q('''SELECT payment_date, payment_status, sum(distribution_gbp) AS scheduled_distribution_gbp
+            FROM income_distributions WHERE payment_status = 'Declared' AND payment_date > ?
+            GROUP BY 1,2 ORDER BY 1''', [maximum])
+        if upcoming.empty:
+            st.info('No declared future income payments for the fund.')
+        else:
+            table_export(upcoming, 'scheduled_distributions')
 
 else:
     st.write('Trace the dashboard back to its source files and inspect import validation.')
