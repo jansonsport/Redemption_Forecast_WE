@@ -67,7 +67,7 @@ def pct(v, d=1) -> str:
 
 
 def num2(v) -> str:
-    return f'{float(v):.2f}' if finite(v) else '—'
+    return f'{float(v) + 0.0:.2f}'.replace('-0.00', '0.00') if finite(v) else '—'
 
 
 def gbp(v) -> str:

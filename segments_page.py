@@ -34,6 +34,20 @@ def _load(identity):
     return bundle, StressEngine(bundle)
 
 
+def _short(text: str, n: int = 30) -> str:
+    """Axis labels stay readable at phone width; the full text is in the hover."""
+    return text if len(text) <= n else text[:n - 1].rstrip() + '…'
+
+
+def _scenario_label(text: str) -> str:
+    """Compact scenario name for the chart axis (full name in the hover); stays unique per scenario."""
+    for a, b in ((': worst ', ' · '), (' net outflow', ''), (' clients redeem in full', ' exit in full'),
+                 ('99th pct, all segments together (ρ=1)', 'segment tails, ρ=1'), ('99th pct, historical stress correlation', 'segment tails, stress ρ'),
+                 (' + top 10 full exit + known payables', ' + top 10 + payables'), (' (ended ', ' ('), ('5-day segment tails (ρ=1)', '5-day tails')):
+        text = text.replace(a, b)
+    return _short(text, 34)
+
+
 def _swatch(colour: str) -> str:
     return f'<span style="color:{colour};font-size:1.1em" aria-hidden="true">●</span>'
 
@@ -99,6 +113,11 @@ class Page:
 
     def goto(self, section):
         self.ss.sg_section = section
+
+    @staticmethod
+    def card(col, label, value, sub):
+        col.metric(label, value)
+        col.caption(sub)
 
     # ------------------------------------------------------------------ frame
     def show(self):
@@ -171,10 +190,10 @@ class Page:
                     st.button('Open →', key=f'sg_step_{i}', on_click=self.goto, args=(target,), help=f'Go to {target}')
         tight = [s for s in self.order if V.verdict(s, o['cohesion'], o['random_pair_r'])[0] == 'Tight group']
         c = st.columns(4)
-        c[0].metric('Behavioural segments', f"{self.meta['k']} + rare traders", f'{len(tight)} tight groups; the rest loose or labels only', delta_color='off', delta_arrow='off')
-        c[1].metric('Rare traders hold', V.pct(rare.aum_share), f"{int(rare.clients):,} clients · {int(self.conc.top10_rare_traders)} of the 10 biggest", delta_color='off', delta_arrow='off')
-        c[2].metric('Top-10 holders', V.pct(self.conc.top10_share), 'of AUM: the main liquidity exposure', delta_color='off', delta_arrow='off')
-        c[3].metric('10% buffer covers', f'{rev10} clients', 'of the largest, leaving in full', delta_color='off', delta_arrow='off')
+        self.card(c[0], 'Behavioural segments', f"{self.meta['k']}", f'plus rare traders · {len(tight)} tight groups; the rest loose or labels only')
+        self.card(c[1], 'Rare traders hold', V.pct(rare.aum_share), f"{int(rare.clients):,} clients · {int(self.conc.top10_rare_traders)} of the 10 biggest")
+        self.card(c[2], 'Top-10 holders', V.pct(self.conc.top10_share), 'of AUM: the main liquidity exposure')
+        self.card(c[3], '10% buffer covers', f'{rev10} clients', 'of the largest, leaving in full')
         vl = o['value_lift'].sort_values('month_matched_value_lift', ascending=False).head(3)
         worst5 = o['tests'][(o['tests'].family == 'Historical replay') & o['tests'].scenario.str.contains('5-day')].outflow_gbp.max()
         st.subheader('What we found')
@@ -260,6 +279,7 @@ class Page:
         st.caption(f"The {o['typical']['clients']:,} measurable clients on a behaviour map: 2,500 sampled. Numbered circles are the group centres. "
                    'Nearby dots behave alike; overlapping colours show that the groups blend into each other.')
         self.chart(self.scatter_map(None if hi == 'All segments' else hi), hovermode='closest')
+        st.caption(self.map_axes + ' Each axis combines all nine habits; these are the two habits that weigh most on it.')
 
         st.subheader('Step 4 · Choose how many groups')
         c1, c2 = st.columns([3, 2])
@@ -291,7 +311,7 @@ class Page:
             c = coh.loc[s]; v, why = V.verdict(s, o['cohesion'], o['random_pair_r'])
             rows.append({'Segment': s, 'Verdict': v, 'Clearly belong': V.pct(c.well_fitted_share, 0), 'Spread vs whole fund': V.pct(c.spread_vs_fund, 0),
                          'Move together (avg r)': V.num2(c.flow_r_within),
-                         'vs random pair': f'{c.flow_r_within / o["random_pair_r"]:.1f}×' if V.finite(c.flow_r_within) else '—', 'What it means': why})
+                         'vs random pair': f'{c.flow_r_within / o["random_pair_r"] + 0.0:.1f}×'.replace('-0.0×', '0.0×') if V.finite(c.flow_r_within) else '—', 'What it means': why})
         st.dataframe(pd.DataFrame(rows), hide_index=True, width='stretch')
 
         st.subheader('Step 6 · Is this better than sector, client type or region?')
@@ -301,7 +321,7 @@ class Page:
         avg = G.groupby('grouping').eta_squared.mean()
         cols = st.columns(len(names))
         for col, g in zip(cols, names):
-            col.metric(g.replace(' (formed 2006–2016)', ''), V.pct(avg[g], 0), 'of later behaviour explained', delta_color='off', delta_arrow='off')
+            self.card(col, g.replace(' (formed 2006–2016)', ''), V.pct(avg[g], 0), 'of later behaviour explained')
         feats = list(V.FEATURE_LABELS)
         val = G.pivot(index='feature', columns='grouping', values='eta_squared').reindex(feats)
         palette = [V.SEGMENT_PALETTE[0], V.SEGMENT_PALETTE[1], V.SEGMENT_PALETTE[4], V.RARE_COLOUR]
@@ -339,8 +359,9 @@ class Page:
             l = pca['loadings'].assign(a=lambda d: d[pc].abs()).sort_values('a', ascending=False).head(2)
             return ', '.join(('more ' if r[pc] > 0 else 'less ') + V.lower_label(V.FEATURE_LABELS[r.feature]) for _, r in l.iterrows())
         ex = pca['explained']
-        fig.update_xaxes(title_text=f'Behaviour axis 1 ({V.pct(ex[0], 0)} of variation) → {axis("pc1")}', range=[lo_x, hi_x])
-        fig.update_yaxes(title_text=f'Axis 2 ({V.pct(ex[1], 0)}) → {axis("pc2")}', range=[lo_y, hi_y])
+        fig.update_xaxes(title_text=f'Behaviour axis 1 ({V.pct(ex[0], 0)} of variation)', range=[lo_x, hi_x])
+        fig.update_yaxes(title_text=f'Behaviour axis 2 ({V.pct(ex[1], 0)})', range=[lo_y, hi_y])
+        self.map_axes = f'Axis 1 → {axis("pc1")}. Axis 2 → {axis("pc2")}.'
         fig.update_layout(height=520, legend=dict(orientation='h', y=-0.2))
         return fig
 
@@ -581,17 +602,19 @@ class Page:
                         hovertemplate='%{x|%d %b %Y}: %{y:.1f}%<extra></extra>', row=1, col=1)
         strips = [('Stress days in use', used, STRIP_COLOURS['used']), ('From your periods', per, STRIP_COLOURS['periods']),
                   ('From price trigger', price, STRIP_COLOURS['price'])]
+        def bands(mask, y0, y1):
+            # One filled rectangle per contiguous run of flagged days, so gaps stay visible and the chart stays light.
+            runs = np.flatnonzero(np.diff(np.r_[0, np.asarray(mask, dtype=int), 0])); xs, ys = [], []
+            for a, b in zip(runs[::2], runs[1::2]):
+                xs += [e.dates[a], e.dates[a], e.dates[b - 1] + pd.Timedelta(days=1), e.dates[b - 1] + pd.Timedelta(days=1), None]; ys += [y0, y1, y1, y0, None]
+            return xs, ys
         for r, (label, mask, colour) in enumerate(strips, start=2):
-            fig.add_scatter(x=e.dates, y=np.where(mask, 1, np.nan), mode='lines', fill='tozeroy', line=dict(color=colour, width=0), fillcolor=colour,
-                            name=label, hovertemplate=f'{label}<br>%{{x|%d %b %Y}}<extra></extra>', connectgaps=False, row=r, col=1)
-            fig.update_yaxes(range=[0, 1], showticklabels=False, showgrid=False, title_text=label, title_font=dict(size=11),
-                             title_standoff=4, row=r, col=1)
-        # Shade stress days on the drawdown panel (contiguous runs, so the chart stays light).
-        runs = np.flatnonzero(np.diff(np.r_[0, used.astype(int), 0]))
+            xs, ys = bands(mask, 0, 1)
+            fig.add_scatter(x=xs or [None], y=ys or [None], fill='toself', mode='lines', line=dict(width=0), fillcolor=colour,
+                            name=f'{label} ({int(np.sum(mask)):,})', hoverinfo='skip', row=r, col=1)
+            fig.update_yaxes(range=[0, 1], tickvals=[0.5], ticktext=[label], showgrid=False, zeroline=False, tickfont=dict(size=11), row=r, col=1)
         lo = float(np.nanmin(100 * e.drawdown)) * 1.05
-        xs, ys = [], []
-        for a, b in zip(runs[::2], runs[1::2]):
-            xs += [e.dates[a], e.dates[a], e.dates[b - 1], e.dates[b - 1], None]; ys += [lo, 0, 0, lo, None]
+        xs, ys = bands(used, lo, 0)
         if xs:
             fig.add_scatter(x=xs, y=ys, fill='toself', mode='lines', line=dict(width=0), fillcolor='rgba(210,107,69,0.16)',
                             name='Shaded: stress days in use', hoverinfo='skip', row=1, col=1)
@@ -613,7 +636,7 @@ class Page:
         cols = st.columns(4)
         for col, n in zip(cols, (1, 10, 20, 100)):
             r = int(c[f'top{n}_rare_traders'])
-            col.metric(f"Top {n} client{'s' if n > 1 else ''} hold", V.pct(c[f'top{n}_share']), f"{r} rare trader{'' if r == 1 else 's'} among them", delta_color='off', delta_arrow='off')
+            self.card(col, f"Top {n} clients hold" if n > 1 else 'Largest client holds', V.pct(c[f'top{n}_share']), f"{r} rare trader{'' if r == 1 else 's'} among them")
 
         st.subheader('How concentrated is the fund?')
         st.caption('Share of AUM held by the largest N clients at each year-end (reconstructed holdings; last point is 30 Oct 2026).')
@@ -644,11 +667,11 @@ class Page:
             hc = c3.selectbox('Fire-sale haircut', [0.01, 0.03, 0.05, 0.10], index=1, key='sg_haircut', format_func=lambda v: V.pct(v, 0))
             st.caption('Presets')
             presets = [(f'{V.pct(b, 0)}', b) for b in self.meta['buffers']] + [
-                (f"{k.replace(' (current)', '').replace(' (2023 amendments)', '')} daily {V.pct(v[0], 1)}", v[0]) for k, v in floors.items()]
+                (f"{k.split(' · ')[-1].replace(' (current)', '').replace('US Rule 2a-7 (2023 amendments)', 'US 2a-7')} {V.pct(v[0], 1)}", v[0]) for k, v in floors.items()]
             cols = st.columns(len(presets))
             for i, (col, (label, b)) in enumerate(zip(cols, presets)):
                 col.button(label, key=f'sg_buf_{i}', on_click=self.set_buffer, args=(b,), width='stretch',
-                           help='Money market fund rule, reference only' if i >= len(self.meta['buffers']) else None)
+                           help=(list(floors)[i - len(self.meta['buffers'])] + ' daily floor: money market fund rule, reference only') if i >= len(self.meta['buffers']) else None)
             st.caption('The buffer is the cash (or assets sellable within a day) assumed available. The database has no portfolio holdings, so it is illustrative. '
                        'Money-market-fund minimums are shown for reference only; this fund is not an MMF. The FCA\'s June 2026 position is to keep current '
                        'UK MMF minimums; further guidance is pending.')
@@ -673,12 +696,12 @@ class Page:
         fig = go.Figure()
         for flag, name, colour in [(True, 'Paid within the buffer', V.COVERED), (False, 'Buffer already empty', V.SHORTFALL)]:
             sel = t[paid == flag]
-            fig.add_bar(y=[f'{r.rank}. {r.client_name}' for r in sel.itertuples()], x=sel.holding_gbp, orientation='h', name=name, marker_color=colour,
-                        customdata=np.c_[sel.segment, [self.money(v) for v in cum[:k][paid == flag]]],
-                        hovertemplate='%{y}<br>%{customdata[0]}<br>Holding £%{x:,.0f}<br>Running total %{customdata[1]}<br>' + name + '<extra></extra>')
-        fig.update_yaxes(categoryorder='array', categoryarray=[f'{r.rank}. {r.client_name}' for r in t.itertuples()], autorange='reversed')
+            fig.add_bar(y=[_short(f'{r.rank}. {r.client_name}', 26) for r in sel.itertuples()], x=sel.holding_gbp, orientation='h', name=name, marker_color=colour,
+                        customdata=np.c_[sel.segment, [self.money(v) for v in cum[:k][paid == flag]], [f'{r.rank}. {r.client_name} ({r.client_id})' for r in sel.itertuples()]],
+                        hovertemplate='%{customdata[2]}<br>%{customdata[0]}<br>Holding £%{x:,.0f}<br>Running total %{customdata[1]}<br>' + name + '<extra></extra>')
+        fig.update_yaxes(categoryorder='array', categoryarray=[_short(f'{r.rank}. {r.client_name}', 26) for r in t.itertuples()], autorange='reversed', automargin=True)
         fig.update_xaxes(title_text='Holding that would be redeemed (GBP)')
-        fig.update_layout(height=max(320, 26 * k), barmode='overlay', title_text='Largest clients, in the order they would be paid')
+        fig.update_layout(height=max(320, 26 * k), barmode='overlay', title_text='Largest clients, in the order they would be paid', legend=dict(orientation='h', y=-0.18))
         self.chart(fig, hovermode='closest')
         others = ' · '.join(f"**{V.pct(b, 0)}** → {V.reverse_stress(self.top, b * self.aum - pay)['label']}" for b in (0.05, 0.10, 0.20, 0.30))
         st.caption(f'How many of the largest clients other buffers would cover: {others}. Because a handful of clients hold so much, even large buffers cover '
@@ -695,11 +718,11 @@ class Page:
             T = T[T.family.isin(fams)]
         fail = T[T.short > 0]
         c = st.columns(4)
-        c[0].metric('Buffer', self.money(B_), f'{V.pct(buf, 1)} of AUM', delta_color='off', delta_arrow='off')
-        c[1].metric('Scenarios the buffer covers', f'{len(T) - len(fail)} of {len(T)}',
-                    f'largest shortfall {self.money(fail.short.max())}' if len(fail) else 'all covered', delta_color='off', delta_arrow='off')
-        c[2].metric('Worst scenario', self.money(T.total.max()) if len(T) else '—', 'including payables', delta_color='off', delta_arrow='off')
-        c[3].metric('Loss if assets must be sold', self.money(T.loss.max() if len(T) else 0), f'worst shortfall at a {V.pct(hc, 0)} haircut', delta_color='off', delta_arrow='off')
+        self.card(c[0], 'Buffer', self.money(B_), f'{V.pct(buf, 1)} of AUM')
+        self.card(c[1], 'Scenarios the buffer covers', f'{len(T) - len(fail)} of {len(T)}',
+                  f'largest shortfall {self.money(fail.short.max())}' if len(fail) else 'all covered')
+        self.card(c[2], 'Worst scenario', self.money(T.total.max()) if len(T) else '—', 'including payables')
+        self.card(c[3], 'Loss if assets must be sold', self.money(T.loss.max() if len(T) else 0), f'worst shortfall at a {V.pct(hc, 0)} haircut')
         if T.empty:
             st.info('Select at least one scenario family.')
         else:
@@ -707,13 +730,13 @@ class Page:
             fig = go.Figure()
             for flag, name, colour in [(False, 'Covered by the buffer', V.COVERED), (True, 'Exceeds the buffer', V.SHORTFALL)]:
                 s = S[(S.short > 0) == flag]
-                fig.add_bar(y=s.scenario, x=s.total / self.aum, orientation='h', name=name, marker_color=colour,
-                            customdata=np.c_[s.family, [self.money(v) for v in s.total], [self.money(v) for v in s.short]],
-                            hovertemplate='%{y}<br>%{customdata[0]}<br>Outflow %{customdata[1]} (%{x:.1%} of AUM)' + ('<br>Shortfall %{customdata[2]}' if flag else '<br>Covered') + '<extra></extra>')
+                fig.add_bar(y=s.scenario.map(_scenario_label), x=s.total / self.aum, orientation='h', name=name, marker_color=colour,
+                            customdata=np.c_[s.family, [self.money(v) for v in s.total], [self.money(v) for v in s.short], s.scenario],
+                            hovertemplate='%{customdata[3]}<br>%{customdata[0]}<br>Outflow %{customdata[1]} (%{x:.1%} of AUM)' + ('<br>Shortfall %{customdata[2]}' if flag else '<br>Covered') + '<extra></extra>')
             fig.add_vline(x=buf, line=dict(color='#14232f', dash='dash', width=1), annotation_text=f'Buffer {V.pct(buf, 1)}', annotation_position='top')
-            fig.update_yaxes(categoryorder='array', categoryarray=list(S.scenario), autorange='reversed')
+            fig.update_yaxes(categoryorder='array', categoryarray=list(S.scenario.map(_scenario_label)), autorange='reversed', automargin=True)
             fig.update_xaxes(title_text='Outflow as a share of AUM', tickformat='.0%')
-            fig.update_layout(height=max(360, 24 * len(S)), barmode='overlay', title_text='Scenario outflows')
+            fig.update_layout(height=max(360, 24 * len(S)), barmode='overlay', title_text='Scenario outflows', legend=dict(orientation='h', y=-0.12))
             self.chart(fig, hovermode='closest')
             with st.expander('Scenario table with second-round asset sales'):
                 self.export(pd.DataFrame({'Family': T.family, 'Scenario': T.scenario, 'Outflow (GBP)': T.outflow_gbp.round(0), 'Share of AUM': T.outflow_share,
@@ -800,10 +823,10 @@ class Page:
         tot = rows.current_holding_gbp.sum()
         mix = rows.segment.value_counts().reindex(self.order).dropna().astype(int)
         c = st.columns(4)
-        c[0].metric('Clients matching', f'{len(rows):,}', f'of {len(feat):,}', delta_color='off', delta_arrow='off')
-        c[1].metric('They hold', self.money(tot), f'{V.pct(tot / self.aum)} of AUM', delta_color='off', delta_arrow='off')
-        c[2].metric('Largest', self.money(rows.current_holding_gbp.max()) if len(rows) else '—', 'single holding', delta_color='off', delta_arrow='off')
-        c[3].metric('Segments represented', f'{len(mix)}', ' · '.join(f'{s} {n}' for s, n in mix.head(3).items()) or 'none', delta_color='off', delta_arrow='off')
+        self.card(c[0], 'Clients matching', f'{len(rows):,}', f'of {len(feat):,}')
+        self.card(c[1], 'They hold', self.money(tot), f'{V.pct(tot / self.aum)} of AUM')
+        self.card(c[2], 'Largest', self.money(rows.current_holding_gbp.max()) if len(rows) else '—', 'single holding')
+        self.card(c[3], 'Segments represented', f'{len(mix)}', ' · '.join(f'{s} {n}' for s, n in mix.head(3).items()) or 'none')
         if rows.empty:
             st.info('No clients match. Remove a condition or widen the filters.')
             return
@@ -830,10 +853,10 @@ class Page:
         st.caption(f'{cid} · {cl.client_sector} · {cl.client_type} · {cl.region}')
         rank = self.top.set_index('client_id').get('rank', pd.Series(dtype=int)).get(cid)
         c = st.columns(4)
-        c[0].metric('Segment', s, v, delta_color='off', delta_arrow='off')
-        c[1].metric('Holding now', self.money(f.current_holding_gbp), f'rank {rank} by size' if rank else 'rank >100 by size', delta_color='off', delta_arrow='off')
-        c[2].metric('Trades', V.fmt(f.trades, 'int'), f'{V.num2(f.years_active)} years active', delta_color='off', delta_arrow='off')
-        c[3].metric('Stress lift', V.num2(f.stress_lift), '1 = same redemption rate in stress', delta_color='off', delta_arrow='off')
+        self.card(c[0], 'Segment', s, v)
+        self.card(c[1], 'Holding now', self.money(f.current_holding_gbp), f'rank {rank} by size' if rank else 'rank >100 by size')
+        self.card(c[2], 'Trades', V.fmt(f.trades, 'int'), f'{V.num2(f.years_active)} years active')
+        self.card(c[3], 'Stress lift', V.num2(f.stress_lift), '1 = same redemption rate in stress')
         pairs = {'trades_per_year': 'trades_per_year', 'redemption_share': 'redemption_share', 'median_trade_rel_holding': 'trade_rel_holding',
                  'largest_redemption_rel': 'largest_red_rel', 'stress_lift': 'stress_lift', 'red_march_share': 'march_red_share',
                  'red_december_share': 'december_red_share', 'month_end_trade_share': 'month_end_share', 'mean_holding_gbp': 'median_holding'}
