@@ -108,6 +108,20 @@ class SegmentStudyTests(unittest.TestCase):
         self.assertLess((lift.value_lift - ref.value_lift).abs().max(), 1e-5)
         self.assertLess((lift.month_matched_value_lift - ref.month_matched_value_lift).abs().max(), 1e-5)
 
+    def test_sector_correlations_match_pipeline_and_reconcile(self):
+        o, d = self.out, self.default
+        self.assertEqual(len(o['sector_aum'].columns), 11)
+        # Sector and segment holdings are two partitions of the same clients, so their totals agree every day.
+        self.assertLess((o['sector_aum'].sum(axis=1) - o['seg_aum'].sum(axis=1)).abs().max(), 1e-3)
+        r = self.engine.run(d['dd'], d['periods'])
+        m = r['sector_corr_summary'].merge(o['sector_corr_summary'], on=['frequency', 'basis', 'regime'], suffixes=('_e', '_p'))
+        self.assertEqual(len(m), 12)
+        self.assertLess((m.mean_pairwise_r_e - m.mean_pairwise_r_p).abs().max(), 1e-5)
+        for key, matrix in o['sector_corr'].items():
+            self.assertLess(np.nanmax(np.abs((r['sector_corr'][key] - matrix).to_numpy())), 1e-5, key)
+        changed = self.engine.run(0, [])['sector_corr_summary'].set_index(['frequency', 'basis', 'regime'])
+        self.assertTrue(np.isnan(changed.loc[('daily', 'raw', 'stress'), 'mean_pairwise_r']) or changed.loc[('daily', 'raw', 'stress'), 'periods'] == 0)
+
     def test_unticking_euro_crisis_removes_its_non_price_days(self):
         periods = [Period(p.name, p.start, p.end, p.name != 'Euro-area debt crisis') for p in self.default['periods']]
         self.assertEqual(int(self.engine.flags(0.10, periods).sum()), 716)
@@ -221,6 +235,14 @@ class SegmentPageRenderTests(unittest.TestCase):
         self.assertTrue(any('**0** stress days' in t for t in self.texts()))
         at.button(key='sg_reset').click().run()
         self.assertTrue(any('**781** stress days' in t for t in self.texts()))
+        for freq in ('daily', 'weekly'):
+            for basis in ('raw', 'deseasonalised'):
+                for regime in ('all', 'calm', 'stress'):
+                    at.session_state['sg_hm_freq'] = freq; at.session_state['sg_c_basis'] = basis; at.session_state['sg_c_regime'] = regime
+                    at.run(); self.check(f'heat maps {freq} {basis} {regime}')
+                    md = self.texts()
+                    self.assertTrue(any(t.startswith('**Segments** · ') for t in md) and any(t.startswith('**Sectors** · ') for t in md))
+                    self.assertEqual(sum('Strongest:' in t for t in md), 2)
 
         self.go(V.SECTIONS[3])
         for metric in V.PROFILE_METRICS:

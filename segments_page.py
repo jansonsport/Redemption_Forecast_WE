@@ -559,22 +559,7 @@ class Page:
         with st.container(border=True):
             st.markdown('**Answer:** ' + ans['text'])
         st.caption('Correlation shows co-movement, not causation, and is not a probability that segments act together in future.')
-        with st.expander('Show every pair of segments'):
-            c1, c2 = st.columns(2)
-            basis = c1.selectbox('Basis', ['raw', 'deseasonalised'], key='sg_c_basis', format_func={'raw': 'Actual flows', 'deseasonalised': 'After removing calendar habits'}.get)
-            regime = c2.selectbox('Days', ['stress', 'calm', 'all'], key='sg_c_regime', format_func=str.capitalize)
-            cm = self.live['corr'][(freq, basis, regime)].reindex(index=self.order, columns=self.order)
-            n = int(self.live['corr_summary'].set_index(['frequency', 'basis', 'regime']).loc[(freq, basis, regime), 'periods'])
-            if cm.notna().sum().sum() == 0:
-                st.info(f'No valid correlations: at least 20 shared {"days" if freq == "daily" else "weeks"} are needed in this regime.')
-            else:
-                unit = 'days' if freq == 'daily' else 'weeks'
-                fig = go.Figure(go.Heatmap(z=cm.values, x=self.order, y=self.order, zmin=-1, zmax=1, zmid=0, colorscale='RdBu',
-                                           text=[[f'{v:.2f}' if V.finite(v) else '' for v in r] for r in cm.values], texttemplate='%{text}',
-                                           hovertemplate=f'%{{y}} / %{{x}}<br>Correlation: %{{z:.3f}}<br>{n:,} {unit}<extra></extra>'))
-                fig.update_yaxes(autorange='reversed'); fig.update_layout(height=460)
-                self.chart(fig, hovermode='closest')
-                st.caption(f'{n:,} {unit} · Pearson correlation, minimum 20 shared periods; blank cells mean too few.')
+        self.heatmaps()
 
         st.subheader('Worst outflows inside each stress period')
         st.caption(f"The worst 5- and 20-day net outflow (subscriptions minus redemptions) ending inside each period, as a share of AUM then, "
@@ -586,6 +571,57 @@ class Page:
             st.dataframe(pd.DataFrame({'Period': rp.scenario.str.split(': worst').str[0], 'Horizon': rp.horizon_days.map('{} days'.format),
                                        'Window ended': rp.ended, 'Share of AUM': rp.outflow_share.map(lambda v: V.pct(v, 2)),
                                        "At today's AUM": rp.outflow_gbp.map(self.money)}), hide_index=True, width='stretch')
+
+    def heatmaps(self):
+        """Pairwise flow correlation heat maps for segments and for sectors, under the current stress definition."""
+        st.subheader('Correlation heat maps: segments and sectors')
+        st.caption("Each cell is the correlation between two groups' net flows, measured as a share of each group's own AUM "
+                   '(1 = always moved together, 0 = independent, below 0 = tended to move in opposite directions). '
+                   'Sectors are the client sectors in the database; segments are the behavioural groups from section 2.')
+        c1, c2, c3 = st.columns(3)
+        freq = c1.segmented_control('Measure flows', ['daily', 'weekly'], default='daily', key='sg_hm_freq',
+                                    format_func={'daily': 'Day by day', 'weekly': 'Week by week'}.get) or 'daily'
+        basis = c2.segmented_control('Basis', ['raw', 'deseasonalised'], default='raw', key='sg_c_basis',
+                                     format_func={'raw': 'Actual flows', 'deseasonalised': 'Calendar habits removed'}.get) or 'raw'
+        regime = c3.segmented_control('Days', ['all', 'calm', 'stress'], default='all', key='sg_c_regime', format_func=str.capitalize) or 'all'
+        key = (freq, basis, regime); unit = 'days' if freq == 'daily' else 'weeks'
+        sectors = self.o['sector_aum'].iloc[-1].sort_values(ascending=False).index.tolist() if 'sector_aum' in self.o else []
+        self.heatmap('Segments', self.live['corr'][key], self.live['corr_summary'], key, self.order, unit)
+        if 'sector_corr' in self.live:
+            self.heatmap('Sectors', self.live['sector_corr'][key], self.live['sector_corr_summary'], key, sectors, unit)
+        else:
+            st.info('Rebuild the study to add sector correlations: venv/bin/python -m fund_analytics segments')
+        st.caption(f'Pearson correlation of {"daily" if freq == "daily" else "weekly"} flow rates, minimum 20 shared {unit}; blank cells mean too few. '
+                   '“Calendar habits removed” subtracts each group\'s usual month, time-of-month and weekday pattern first. Stress and calm follow '
+                   'the stress definition above. Correlation shows co-movement, not causation.')
+
+    def heatmap(self, title, cm, summary, key, order, unit):
+        cm = cm.reindex(index=order, columns=order)
+        n = int(summary.set_index(['frequency', 'basis', 'regime']).loc[key, 'periods'])
+        st.markdown(f'**{title}** · {n:,} {unit}')
+        z = cm.to_numpy(copy=True)
+        z[np.triu_indices(len(order))] = np.nan  # each pair once (lower triangle); the diagonal is always 1
+        if not np.isfinite(z).any():
+            st.info(f'No valid correlations: at least 20 shared {unit} are needed in this selection.')
+            return
+        # Lower triangle without its always-empty first row and last column. Both axes carry numbers (key below), so the
+        # grid keeps its width on a phone; full names are in the hover.
+        zz = z[1:, :-1]; rows, cols = order[1:], order[:-1]
+        names = [[f'{a} / {c}' for c in cols] for a in rows]
+        fig = go.Figure(go.Heatmap(z=zz, x=[str(i + 1) for i in range(len(cols))], y=[f'{i + 2}' for i in range(len(rows))],
+                                   zmin=-1, zmax=1, zmid=0, colorscale='RdBu', customdata=np.array(names), xgap=1, ygap=1,
+                                   text=[[f'{v:.2f}' if V.finite(v) else '' for v in r] for r in zz], texttemplate='%{text}', textfont=dict(size=10 if len(order) <= 8 else 9),
+                                   hovertemplate='%{customdata}<br>Correlation: %{z:.3f}<extra></extra>',
+                                   colorbar=dict(title='r', thickness=10, len=0.8)))
+        fig.update_yaxes(autorange='reversed', automargin=True, showgrid=False, title_text=title[:-1] if title.endswith('s') else title)
+        fig.update_xaxes(automargin=True, showgrid=False, title_text=title[:-1] if title.endswith('s') else title)
+        fig.update_layout(height=430 if len(order) <= 8 else 520, plot_bgcolor='rgba(0,0,0,0)')
+        self.chart(fig, hovermode='closest')
+        st.markdown(' · '.join(f'**{i + 1}** {x}' for i, x in enumerate(order)))
+        iu = np.tril_indices(len(order), -1); vals = z[iu]; ok = np.isfinite(vals)
+        pairs = sorted(((float(v), order[i], order[j]) for v, i, j, k in zip(vals, *iu, ok) if k), reverse=True)
+        st.caption(f'Average pair {np.mean([p[0] for p in pairs]):.2f}. Strongest: {pairs[0][1]} & {pairs[0][2]} ({pairs[0][0]:.2f}). '
+                   f'Weakest: {pairs[-1][1]} & {pairs[-1][2]} ({pairs[-1][0]:.2f}).')
 
     def drawdown_chart(self, price):
         e = self.engine; used = self.live['stress'].to_numpy(); per = e.period_mask(self.periods())

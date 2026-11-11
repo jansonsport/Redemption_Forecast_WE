@@ -60,7 +60,8 @@ venv/bin/python -m fund_analytics segments
 ```
 
 Builds the **Segments & stress** page data in about 10 seconds: client segments
-(k-means), segment flow correlation, concentration and liquidity stress tests.
+(k-means), segment and sector flow correlation (heat maps in section 4),
+concentration and liquidity stress tests.
 It reads `data/raw`, writes the `11_*.csv` tables and `bundle.pkl` to
 `data/clean/segments`, and copies the study notebook to `static/segments` for the
 page's "Open full study notebook" link. Rebuild after every new import: the page
