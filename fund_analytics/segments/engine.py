@@ -36,6 +36,19 @@ def default_definition(episodes: dict) -> dict:
     return dict(dd=0.10, periods=[Period(n, a, b, True) for n, (a, b) in episodes.items()])
 
 
+class FlowRates:
+    """Daily net-flow rates per group (net flow / previous-day AUM, groups above £100k), clipped at the 0.1/99.9th
+    percentiles, plus their calendar-adjusted version. Independent of the stress definition, so computed once,
+    exactly as pipeline.flow_correlation does."""
+
+    def __init__(self, val: pd.DataFrame, net: pd.DataFrame):
+        prev = val.shift(1)
+        rate = (net / prev.where(prev > 1e5)).iloc[1:]
+        self.rate = rate.clip(rate.quantile(.001), rate.quantile(.999), axis=1)
+        self.ds = S.deseasonalise(self.rate.fillna(0)).where(self.rate.notna())
+        self.weekly = {b: r.resample('W-FRI').sum(min_count=1) for b, r in (('raw', self.rate), ('deseasonalised', self.ds))}
+
+
 class StressEngine:
     def __init__(self, bundle: dict):
         o = bundle['out']
@@ -45,13 +58,9 @@ class StressEngine:
         self.iso = self.dates.strftime('%Y-%m-%d').to_numpy()
         p = self.daily['price']
         self.drawdown = p / p.rolling(252, min_periods=20).max() - 1
-        # Rates and their calendar adjustment do not depend on the stress definition: compute once,
-        # exactly as pipeline.flow_correlation does.
-        prev = self.val.shift(1)
-        rate = (self.net / prev.where(prev > 1e5)).iloc[1:]
-        self.rate = rate.clip(rate.quantile(.001), rate.quantile(.999), axis=1)
-        self.ds = S.deseasonalise(self.rate.fillna(0)).where(self.rate.notna())
-        self.weekly = {b: r.resample('W-FRI').sum(min_count=1) for b, r in (('raw', self.rate), ('deseasonalised', self.ds))}
+        self.flows = {'segments': FlowRates(self.val, self.net)}
+        if 'sector_aum' in o:
+            self.flows['sectors'] = FlowRates(o['sector_aum'], o['sector_net'])
         self.tails = o['tails']
         self.aum = float(o['base']['aum'])
 
@@ -72,15 +81,17 @@ class StressEngine:
         return pd.Series(self.price_mask(dd) | self.period_mask(periods), index=self.dates, name='stress')
 
     # ------------------------------------------------------------ correlation
-    def correlations(self, stress: pd.Series):
-        stress = stress.reindex(self.rate.index).fillna(False).astype(bool)
+    def correlations(self, stress: pd.Series, group: str = 'segments'):
+        """Pairwise flow-rate correlation between segments (or sectors) on all / calm / stress days."""
+        fr = self.flows[group]
+        stress = stress.reindex(fr.rate.index).fillna(False).astype(bool)
         sw = stress.resample('W-FRI').sum() >= 3  # a stress week has 3+ stress days
         res, rows = {}, []
         for freq, basis, regime in KEYS:
-            x = self.rate if basis == 'raw' else self.ds
+            x = fr.rate if basis == 'raw' else fr.ds
             flag = stress
             if freq == 'weekly':
-                x, flag = self.weekly[basis], sw
+                x, flag = fr.weekly[basis], sw
             if regime != 'all':
                 x = x.loc[~flag if regime == 'calm' else flag]
             cm = x.corr(min_periods=20)
@@ -132,5 +143,8 @@ class StressEngine:
     def run(self, dd: float, periods) -> dict:
         stress = self.flags(dd, periods)
         corr, summary = self.correlations(stress)
-        return dict(stress=stress, days=int(stress.sum()), corr=corr, corr_summary=summary, lift=self.lift(stress),
-                    replay=self.replay(periods), tail=self.tail_hist(corr[('daily', 'raw', 'stress')]))
+        out = dict(stress=stress, days=int(stress.sum()), corr=corr, corr_summary=summary, lift=self.lift(stress),
+                   replay=self.replay(periods), tail=self.tail_hist(corr[('daily', 'raw', 'stress')]))
+        if 'sectors' in self.flows:
+            out['sector_corr'], out['sector_corr_summary'] = self.correlations(stress, 'sectors')
+        return out

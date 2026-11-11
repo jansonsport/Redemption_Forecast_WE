@@ -541,6 +541,10 @@ def run(cfg=CONFIG, write=True, prefix='11_'):
     checks = pd.concat([checks, pd.DataFrame([dict(check='Holdings = units × price', result=f"median unit error {unit_check['median_abs_unit_error']:.5f}; rebuilt fund AUM within {rel_err.max():.4%} of reported every day",
                                                     detail='units from balance-after-trade ÷ class price; unit changes match flow ÷ price', passed=bool(rel_err.max() < 0.005))])], ignore_index=True)
     rate, corr, corr_summary = flow_correlation(val, net, flags)
+    # Same flow-correlation method by sector (a static client attribute), for the sector heat map on the page.
+    sector = clients.set_index(cfg['clients']['id'])[cfg['clients']['sector']]
+    sec_val, sec_net, _ = segment_aum(cfg, f, prices, fund, sector)
+    _, sec_corr, sec_corr_summary = flow_correlation(sec_val, sec_net, flags)
     vlift = value_stress_lift(val, red, flags)
     conc, top, hold = concentration(cfg, f, prices, fund, seg)
     tests, tails, rev, second, base = stress_tests(cfg, fund, flags, val, net, red, rate, corr, top, pay, seg)
@@ -560,7 +564,7 @@ def run(cfg=CONFIG, write=True, prefix='11_'):
     gcomp, gcomp_n = grouping_comparison(cfg, clients, f, fund, flags, k_chosen)
     cohesion, random_r, pmap = segment_cohesion(cfg, feat_out, f, clients, fund)
     seg_aum_hist = val.resample('YE').last()
-    out = dict(cohesion=cohesion, random_pair_r=random_r, pca=pmap, value_lift=vlift, typical=typical, grouping=gcomp, grouping_clients=gcomp_n, seg_red=red, inventory=inv, checks=checks, month=month, flags=flags, ctx=ctx, features=feat_out, eligibility=elig, selection=sel, ari=ari, names=names,
+    out = dict(sector_aum=sec_val, sector_net=sec_net, sector_corr=sec_corr, sector_corr_summary=sec_corr_summary, cohesion=cohesion, random_pair_r=random_r, pca=pmap, value_lift=vlift, typical=typical, grouping=gcomp, grouping_clients=gcomp_n, seg_red=red, inventory=inv, checks=checks, month=month, flags=flags, ctx=ctx, features=feat_out, eligibility=elig, selection=sel, ari=ari, names=names,
                validation=valid, sector_mix=sector_mix, profiles=prof, seg_aum=val, seg_net=net, rate=rate, corr=corr, corr_summary=corr_summary,
                concentration=conc, top=top, tests=tests, tails=tails, reverse=rev, second_round=second, base=base, unit_check=unit_check)
     if write: save(out, cfg, prefix)
@@ -583,6 +587,9 @@ def save(o, cfg, prefix):
         for i in m.index:
             for j in m.columns: rows.append(dict(frequency=fq, basis=b, regime=rg, segment_a=i, segment_b=j, r=m.loc[i, j]))
     w(pd.DataFrame(rows), 'segment_correlations', index=False)
+    rows = [dict(frequency=fq, basis=b, regime=rg, sector_a=i, sector_b=j, r=m.loc[i, j])
+            for (fq, b, rg), m in o['sector_corr'].items() for i in m.index for j in m.columns]
+    w(pd.DataFrame(rows), 'sector_correlations', index=False); w(o['sector_corr_summary'], 'sector_correlation_summary', index=False)
     w(o['concentration'], 'concentration', index=False); w(o['top'], 'top_holders', index=False)
     w(o['tests'], 'stress_tests', index=False); w(o['tails'], 'segment_tails', index=False); w(o['reverse'], 'reverse_stress', index=False)
     w(o['second_round'], 'second_round', index=False); w(o['grouping'], 'grouping_comparison', index=False); w(o['value_lift'], 'stress_value_lift', index=False); w(o['cohesion'].assign(random_pair_r=o['random_pair_r']), 'segment_cohesion', index=False)
