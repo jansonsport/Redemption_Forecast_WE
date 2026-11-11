@@ -5,7 +5,7 @@ import json
 
 def main():
     parser = argparse.ArgumentParser(description='Fund flow analytics pipeline')
-    parser.add_argument('command', choices=['ingest', 'forecast', 'horizon-backtest', 'monthly-forecast', 'daily-forest-backtest', 'benchmark'])
+    parser.add_argument('command', choices=['ingest', 'forecast', 'horizon-backtest', 'monthly-forecast', 'daily-forest-backtest', 'segments', 'benchmark'])
     args = parser.parse_args()
     if args.command == 'ingest':
         from .db import ingest
@@ -27,6 +27,9 @@ def main():
         print('Selected random forest settings:')
         print(models.to_string(index=False))
         print(summary.to_string(index=False))
+    elif args.command == 'segments':
+        from .segments.bundle import build
+        print(json.dumps(build(), indent=2, default=str))
     else:
         from .benchmark import run
         run()
