@@ -74,11 +74,11 @@ def table_export(frame, name):
                        f'{name}.csv', 'text/csv', key=f'download_{name}')
 
 
-def chart(fig):
+def chart(fig, hovermode='x unified'):
     fig.update_layout(template='plotly_white', paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=10, t=25, b=0),
                       legend_title_text='', font=dict(family='Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-                      color='#263746', size=14), hovermode='x unified')
+                      color='#263746', size=14), hovermode=hovermode)
     fig.update_xaxes(title_font=dict(color='#263746', size=14),
                      tickfont=dict(color='#425767', size=12),
                      gridcolor='#d6dee5', zerolinecolor='#aab7c2')
@@ -219,11 +219,11 @@ def q(sql, params=()):
 minimum, maximum = coverage
 st.sidebar.markdown('### ◈ Fund Flow')
 st.sidebar.caption('RESEARCH WORKBENCH · V1')
-page = st.sidebar.radio('Workspace', ['Overview', 'Timing patterns', 'Client behaviour', 'Forecasts', 'Data quality'])
+page = st.sidebar.radio('Workspace', ['Overview', 'Timing patterns', 'Client behaviour', 'Forecasts', 'Data quality', 'Segments & stress'])
 st.sidebar.divider()
 sectors = q('SELECT DISTINCT client_sector FROM clients ORDER BY 1').iloc[:, 0].tolist()
 
-if page not in ('Forecasts', 'Data quality'):
+if page not in ('Forecasts', 'Data quality', 'Segments & stress'):
     default_start = max(minimum, maximum - timedelta(days=365 * 3))
     selected_dates = st.sidebar.date_input('Analysis period', (default_start, maximum),
                                           min_value=minimum, max_value=maximum)
@@ -434,6 +434,11 @@ elif page == 'Client behaviour':
             with st.expander('Shared observation counts'):
                 st.dataframe(overlap)
             table_export(histories, 'client_histories')
+
+elif page == 'Segments & stress':
+    from segments_page import render as render_segments
+    render_segments(chart, money, table_export,
+                    current_fingerprint=str(manifest.iloc[-1]['fingerprint']) if not manifest.empty and 'fingerprint' in manifest.columns else None)
 
 elif page == 'Forecasts':
     view = st.radio('Forecast workspace',['Next-month forecast','Monthly model comparison'],horizontal=True)
