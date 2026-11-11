@@ -5,3 +5,4 @@ __pycache__/
 docs/Gmail - Charity Fund Forecasting:Correlation.pdf
 data/clean/*
 !data/clean/.gitkeep
+static/segments/
