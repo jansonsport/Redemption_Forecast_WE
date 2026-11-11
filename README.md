@@ -53,6 +53,50 @@ observations are excluded. Existing daily forecasts retain their original cutoff
 The historical same-month-last-year rule is included as a serious benchmark;
 random forest is an experimental challenger, not an assumed improvement.
 
+## Segments & stress (client relationships)
+
+```sh
+venv/bin/python -m fund_analytics segments
+```
+
+Builds the **Segments & stress** page data in about 10 seconds: client segments
+(k-means), segment flow correlation, concentration and liquidity stress tests.
+It reads `data/raw`, writes the `11_*.csv` tables and `bundle.pkl` to
+`data/clean/segments`, and copies the study notebook to `static/segments` for the
+page's "Open full study notebook" link. Rebuild after every new import: the page
+refuses a bundle built from a different source fingerprint. Restart the dashboard
+after rebuilding.
+
+This is **descriptive analysis of relationships between clients, not a
+forecast**. It does not feed the Forecasts page. Segments are assigned using
+each client's full history (hindsight). Correlation is co-movement, not
+causation, and stress scenarios are illustrative exposures. There are no
+portfolio holdings, so cash buffers are illustrative. Segment and client
+holdings are reconstructed as units × price and checked against reported fund
+AUM; see the PRD correctness rules.
+
+The study is ported from `handoff/segments_stress/` (the original analysis,
+notebook and reference UI). Changes for this repository:
+
+- Paths point at `data/raw` and `data/clean/segments`, and the code is updated
+  for pandas 3 (read-only arrays; `'YE'`/`'ME'` resample aliases).
+- **k is fixed at 7** (`CONFIG['k_fixed']`). On silhouette, 7 and 8 groups are
+  nearly tied, and the scikit-learn version decides which wins. The automatic
+  choice is still shown on the page and is 8 in this environment.
+- The main k-means fit uses **50 restarts** (`CONFIG['n_init']`, was 10). With
+  10, this scikit-learn version stopped at a worse k=7 solution. With 50, results
+  are stable (50 and 200 restarts agree), 98% of clients get the same segment as
+  in the original study, and all seven segment names match.
+- The browser stress engine is now Python (`fund_analytics/segments/engine.py`)
+  and matches the pipeline exactly for the default stress definition. A custom
+  stress definition lasts for the session; download it as JSON to keep it.
+
+Numbers that differ from the original study because of the clustering changes:
+mean daily segment correlation on stress days is 0.13 (study 0.12), and median
+bootstrap stability is 0.70 (study 0.72). Everything that does not depend on the
+clusters is identical, including stress days, rare traders, concentration and
+the reverse stress test.
+
 ## Validation and performance
 
 ```sh
