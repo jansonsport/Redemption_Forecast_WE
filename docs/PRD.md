@@ -214,3 +214,24 @@ The coordinating agent owns shared contracts and integration. Once schema and qu
 - [Streamlit caching](https://docs.streamlit.io/develop/concepts/architecture/caching)
 
 The stack, local-only operation, supplied-files-only scope, baseline forecasts and fund/sector coverage reflect the planning discussion. Detailed thresholds, model grids and performance targets above are implementation defaults and should be changed explicitly if subsequent evidence warrants it.
+
+## Flexible CSV input extension
+
+This extension supersedes the fixed-file, exact-header and all-or-nothing source requirements
+above for descriptive analytics. Offline CLI imports accept missing canonical datasets/columns,
+reordered or extra columns, case/whitespace header variations and bounded header detection after
+introductory records. Explicit source and header-row overrides resolve ambiguity. Dashboard uploads,
+column aliases and live ingestion remain out of scope.
+
+The import manifest records source/parse identity, supplied and usable columns, field validation
+issues, coverage provenance and reconciliation results. Invalid supplied columns are unavailable
+in their entirety; no row dropping or fabricated zero amounts is permitted. Component dependencies
+control both analytics preflight and UI rendering. Unavailable filters/charts/metrics explain their
+missing or invalid fields without suppressing independent components. Transaction-only dates do
+not establish zero-flow days, account exposure or valid calendar correlations.
+
+Imports remain atomic and replace the complete snapshot. Failed parsing preserves the previous
+snapshot; successful partial imports remove stale derived data. All forecasting requires the full
+validated original inputs; descriptive flexibility does not change model designs. Existing stored
+outputs retain fingerprint checks. A deterministic complete/missing-sector fixture pair covers
+2025 and isolates client_sector absence for manual and automated dashboard tests.

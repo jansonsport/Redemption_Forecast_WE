@@ -47,7 +47,7 @@ class DatabaseTests(unittest.TestCase):
     def test_idempotent(self):
         self.assertEqual(db.ingest(path=self.path)['status'],'unchanged')
 
-    def test_invalid_snapshot_rolls_back_and_valid_change_replaces(self):
+    def test_invalid_column_is_disabled_parse_failure_rolls_back_and_valid_change_replaces(self):
         with tempfile.TemporaryDirectory() as directory:
             raw = Path(directory)
             for file in db.FILES.values():
@@ -57,10 +57,16 @@ class DatabaseTests(unittest.TestCase):
                 rows = list(csv.reader(stream))
             with client_file.open('w',newline='') as stream:
                 csv.writer(stream).writerows(rows+[rows[1]])
-            with self.assertRaisesRegex(ValueError,'duplicate key'):
-                db.ingest(raw_dir=raw,path=self.path)
+            partial = db.ingest(raw_dir=raw,path=self.path)
+            self.assertNotIn('client_id', partial['validation']['inventory']['clients']['usable_columns'])
             with db.connect(path=self.path) as con:
-                self.assertEqual(con.execute('SELECT count(*) FROM clients').fetchone()[0],11103)
+                self.assertEqual(con.execute('SELECT count(*) FROM clients').fetchone()[0],11104)
+                self.assertEqual(con.execute('SELECT count(client_id) FROM clients').fetchone()[0],0)
+            with client_file.open('a',newline='') as stream:
+                csv.writer(stream).writerow(['malformed'])
+            with self.assertRaisesRegex(ValueError,'malformed'):
+                db.ingest(raw_dir=raw,path=self.path)
+            self.assertEqual(db.latest_import()['fingerprint'], partial['fingerprint'])
             rows[1][1] += ' Updated'
             with client_file.open('w',newline='') as stream:
                 csv.writer(stream).writerows(rows)

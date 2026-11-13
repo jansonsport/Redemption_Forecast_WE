@@ -142,3 +142,45 @@ Open **Forecasts → Monthly model comparison**, the single forecasting workspac
 Current daily outlook: November 2026 using observations through 30 October; no October 31 observations are invented. Current monthly outlook begins October 2026 after the last complete month, September. The different origins are shown explicitly.
 
 Daily artifacts use `selected-history-v2` under `data/clean/selected_forecasts/`. Monthly artifacts use `monthly-history-v2` under `data/clean/monthly_forecasts/`; stale versions require regeneration. Monthly generation retains original comparison metrics, settings and metadata as `previous_*` reference files and stores candidate validation scores. See [monthly history-selection results](docs/monthly_history_results.md).
+
+## Flexible CSV datasets
+
+Imports accept subsets of the four canonical datasets and columns. Stop the dashboard before
+importing, and use a separate database when experimenting:
+
+```sh
+FUND_ANALYTICS_DB=/tmp/fund_missing_sector.duckdb venv/bin/python -m fund_analytics ingest --raw-dir examples/csv_import/missing_sector_2025
+FUND_ANALYTICS_DB=/tmp/fund_missing_sector.duckdb venv/bin/python -m streamlit run app.py
+```
+
+See [the one-year examples](examples/csv_import/README.md) for a matching complete dataset,
+a deterministic fixture generator and expected dashboard behaviour.
+
+The importer scans the first 100 CSV records for a canonical header, allowing introductory
+text, blank records, UTF-8 BOMs, reordered columns and header case/whitespace differences.
+Use `--scan-rows 200` to expand the scan. Alternative filenames are recognised from their
+columns; ambiguous files or headers require explicit overrides:
+
+```sh
+venv/bin/python -m fund_analytics ingest --raw-dir /path/to/dataset --source clients=/path/to/clients.csv --header-row clients=5
+```
+
+Header overrides count CSV records from one. Inputs are comma-delimited UTF-8 files containing
+one table each. Column aliases, automatic currency conversion and arbitrary table layouts
+are not supported. Extra columns are reported and ignored by analytics. Raw files are preserved.
+
+Each chart, metric and filter checks its own dependencies. Missing or invalid fields produce
+notifications naming those fields while independent components remain usable. Invalid supplied
+values make the entire column unavailable; rows are not silently dropped to calculate partial
+totals. Missing values are never presented as zero amounts. Transaction-only data shows observed
+event dates; zero-day rates and exposure-based analyses require confirmed complete coverage.
+Coverage is established by a continuous daily fund file, or by a valuation-day fund file whose
+cash totals reconcile and whose omitted dates contain no cash events. This preserves the
+original weekend/holiday calendar; a sparse AUM-only file does not establish zero-flow days.
+
+Data quality shows the selected files/header rows, available columns, validation problems and
+reconciliation status. Unreadable or ambiguous imports leave the previous database unchanged.
+Successful partial imports replace the whole snapshot, so previous data cannot leak into results.
+Forecasting requires the complete validated original schema and sufficient history, and forecast
+and segment artifacts must match the current source fingerprint. The one-year examples are for
+descriptive testing, not model evaluation.

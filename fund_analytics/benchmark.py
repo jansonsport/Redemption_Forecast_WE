@@ -3,7 +3,7 @@ import json
 import platform
 import statistics
 import time
-from . import db
+from . import db, analytics
 
 QUERIES = {
     'sector_totals': 'SELECT client_sector, sum(subscriptions), sum(redemptions) FROM daily_sector GROUP BY 1',
@@ -15,6 +15,10 @@ QUERIES = {
 def run():
     results = {}
     with db.connect() as con:
+        analytics.require_feature('sector', con)
+        analytics.require_feature('flow_cash', con)
+        analytics.require_feature('timing', con)
+        fingerprint = db.require_import(con)['fingerprint']
         for name, sql in QUERIES.items():
             timings = []
             for _ in range(20):
@@ -22,7 +26,7 @@ def run():
                 con.execute(sql).fetchall()
                 timings.append(time.perf_counter() - started)
             results[name] = {'median_seconds': statistics.median(timings), 'p95_seconds': sorted(timings)[18], 'sql': sql}
-    report = {'machine': platform.platform(), 'processor': platform.processor(), 'python': platform.python_version(), 'runs_per_query': 20, 'cache_note': 'No application cache; OS and database caches may be warm.', 'queries': results}
+    report = {'source_fingerprint': fingerprint, 'machine': platform.platform(), 'processor': platform.processor(), 'python': platform.python_version(), 'runs_per_query': 20, 'cache_note': 'No application cache; OS and database caches may be warm.', 'queries': results}
     report['database_bytes'] = db.DB_PATH.stat().st_size
     path = db.CLEAN_DIR / 'benchmark.json'
     path.write_text(json.dumps(report, indent=2))

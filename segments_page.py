@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
+from fund_analytics import analytics, db
 from fund_analytics.segments import bundle as B
 from fund_analytics.segments import views as V
 from fund_analytics.segments.engine import Period, StressEngine, default_definition
@@ -53,6 +54,11 @@ def _swatch(colour: str) -> str:
 
 
 def render(chart, money, table_export, current_fingerprint=None):
+    try:
+        analytics.require_feature('segments')
+    except db.FeatureUnavailable as exc:
+        st.info(f'Segments & stress unavailable: {exc}')
+        return
     if not B.BUNDLE.exists():
         st.info('The segment study has not been built yet. Build it after importing the database (about 10 seconds).')
         st.code('venv/bin/python -m fund_analytics segments', language='bash')

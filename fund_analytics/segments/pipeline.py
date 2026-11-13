@@ -57,6 +57,7 @@ def load(cfg=CONFIG, con=None):
     """One database snapshot: the typed source tables plus the fingerprint of the import they come from."""
     T = cfg['tables']
     with db.using(con) as c:
+        analytics.require_feature('segments', c)
         tables = analytics.load_tables([t for t in T.values() if t], c)
         fingerprint = db.require_import(c)['fingerprint']
     return dict(clients=tables[T['clients']], flows=tables[T['flows']], fund=tables[T['fund']],

@@ -320,60 +320,94 @@ def monthly_view(source_fingerprint, sectors, observation_cutoff):
 
 if not DB_PATH.exists():
     st.title('Fund Flow')
-    st.info('The analytics database has not been built yet. Import the supplied files before opening the dashboard.')
+    st.info('The analytics database has not been built yet. Import CSV files before opening the dashboard.')
     st.code('venv/bin/python -m fund_analytics ingest', language='bash')
     st.stop()
 
 try:
     with db.connect() as connection:
         runs = db.import_runs(connection)
+        db.require_import(connection)
         minimum, maximum = analytics.coverage(connection)
-except Exception as exc:
+        capabilities = analytics.capabilities(connection)
+except (db.DatabaseUnavailable, LookupError) as exc:
     not_ready(exc)
 fingerprint = runs[-1]['fingerprint'] if runs else None
-
-# Source hashes are also exposed below; the file identity protects against database rebuilds.
 identity = f'{DB_PATH.stat().st_mtime_ns}:{DB_PATH.stat().st_size}' + (f':{fingerprint}' if fingerprint else '')
 
+
+def supported(feature):
+    return capabilities[feature]['available']
+
+
+def available(feature, label, container=None):
+    """Check an explicit dependency before querying or rendering a component."""
+    if supported(feature):
+        return True
+    (container or st).info(f"{label} unavailable: " + '; '.join(capabilities[feature]['reasons']))
+    return False
+
+
 st.sidebar.markdown('### ◈ Fund Flow')
-st.sidebar.caption('RESEARCH WORKBENCH · V1')
+st.sidebar.caption('RESEARCH WORKBENCH')
 page = st.sidebar.radio('Workspace', ['Overview', 'Timing patterns', 'Client behaviour', 'Forecasts', 'Data quality', 'Segments & stress'])
 st.sidebar.divider()
-sectors = fetch('distinct_values', column='client_sector')
-
+# Dataset changes must not leave stale filter selections in session state.
+if st.session_state.get('_dataset_identity') != identity:
+    for key in ('filter_sectors', 'filter_types', 'filter_clients', 'filter_dates', 'filter_basis', 'compare_clients'):
+        st.session_state.pop(key, None)
+    st.session_state['_dataset_identity'] = identity
+sectors = fetch('distinct_values', column='client_sector') if supported('sector') else []
+selected_sectors, selected_types, selected_clients = [], [], []
+clients = pd.DataFrame(columns=['client_id', 'client_name'])
+names = {}
+start, end = minimum, maximum
+basis_key = 'cash' if supported('flow_cash') or supported('counts_cash') else 'trade'
 if page not in ('Forecasts', 'Data quality', 'Segments & stress'):
-    default_start = max(minimum, maximum - timedelta(days=365 * 3))
-    selected_dates = st.sidebar.date_input('Analysis period', (default_start, maximum),
-                                          min_value=minimum, max_value=maximum)
-    if len(selected_dates) != 2:
-        st.info('Choose a start and end date to explore the data.')
-        st.stop()
-    start, end = selected_dates
-    selected_sectors = st.sidebar.multiselect('Sectors · all when empty', sectors)
-    types = fetch('distinct_values', column='client_type', sectors=selected_sectors or None)
-    selected_types = st.sidebar.multiselect('Client types · all when empty', types)
-    clients = fetch('client_list', sectors=selected_sectors or None, client_types=selected_types or None)
-    names = dict(zip(clients.client_id, clients.client_name + ' · ' + clients.client_id))
-    selected_clients = st.sidebar.multiselect('Clients · all when empty', clients.client_id.tolist(),
-                                              format_func=lambda key: names.get(key, key))
-    # Empty selections mean all; analytics treats None as all and [] as nothing.
-    filters = dict(start=start, end=end, sectors=selected_sectors or None, client_types=selected_types or None,
-                   client_ids=selected_clients or None)
-    basis = st.sidebar.radio('Date basis', ['Cash movement', 'Trade decision'])
-    basis_key = 'cash' if basis == 'Cash movement' else 'trade'
-    filter_caption = f'{start:%d %b %Y} – {end:%d %b %Y} · {basis} · ' + (', '.join(selected_sectors) if selected_sectors else 'All sectors')
-    if selected_types:
-        filter_caption += f' · {len(selected_types)} client types'
-    if selected_clients:
-        filter_caption += f' · {len(selected_clients)} clients'
+    if minimum is not None and maximum is not None:
+        default_start = max(minimum, maximum - timedelta(days=365 * 3))
+        selected_dates = st.sidebar.date_input('Analysis period', (default_start, maximum),
+            min_value=minimum, max_value=maximum, key='filter_dates')
+        if len(selected_dates) != 2:
+            st.info('Choose a start and end date to explore the data.')
+            st.stop()
+        start, end = selected_dates
+    else:
+        st.sidebar.info('Date filtering unavailable: no valid observation dates.')
+    if available('sector', 'Sector filter · client_sector', st.sidebar):
+        selected_sectors = st.sidebar.multiselect('Sectors · all when empty', sectors, key='filter_sectors')
+    if available('type', 'Client type filter', st.sidebar):
+        types = fetch('distinct_values', column='client_type', sectors=selected_sectors or None)
+        selected_types = st.sidebar.multiselect('Client types · all when empty', types, key='filter_types')
+    if available('clients', 'Client filter', st.sidebar):
+        clients = fetch('client_list', sectors=selected_sectors or None, client_types=selected_types or None)
+        names = dict(zip(clients.client_id, clients.client_name.fillna(clients.client_id) + ' · ' + clients.client_id))
+        selected_clients = st.sidebar.multiselect('Clients · all when empty', clients.client_id.tolist(),
+            format_func=lambda key: names.get(key, key), key='filter_clients')
+    bases = [label for key, label in [('cash', 'Cash movement'), ('trade', 'Trade decision')]
+             if supported('flow_' + key) or supported('counts_' + key)]
+    for key, label in [('cash', 'Cash-date analysis'), ('trade', 'Trade-date analysis')]:
+        if not supported('flow_' + key) and not supported('counts_' + key):
+            available('flow_' + key, label, st.sidebar)
+    if bases:
+        basis = st.sidebar.radio('Date basis', bases, key='filter_basis')
+        basis_key = 'cash' if basis == 'Cash movement' else 'trade'
+    else:
+        basis = 'No flow date basis available'
+    filter_caption = f'{start} – {end} · {basis}' if start is not None else basis
+    if selected_sectors:
+        filter_caption += ' · ' + ', '.join(selected_sectors)
 else:
-    filter_caption = f'Observed fund coverage {minimum:%d %b %Y} – {maximum:%d %b %Y}'
-
+    filter_caption = f'Observed data dates {minimum} to {maximum}' if minimum is not None else 'No valid observation dates available'
+filters = dict(start=start, end=end, sectors=selected_sectors or None,
+    client_types=selected_types or None, client_ids=selected_clients or None)
 st.sidebar.divider()
-st.sidebar.caption('Synthetic data · GBP\n\nLocal analytical workspace. Income distributions are separate from client withdrawals.')
+st.sidebar.caption('GBP · Income distributions are separate from client withdrawals.')
 st.markdown('<div class="eyebrow">FUND INTELLIGENCE / LOCAL ANALYTICS</div>', unsafe_allow_html=True)
 st.title(page)
 st.caption(filter_caption)
+if any(not value['available'] for value in capabilities.values()):
+    st.info('Some features are unavailable for this import. Missing or invalid fields are explained beside affected components and in Data quality.')
 
 
 def daily_data():
@@ -384,145 +418,188 @@ def sector_summary(group='client_sector'):
     return fetch('group_summary', group={'client_sector': 'sector', 'client_type': 'type'}[group], **filters, basis=basis_key)
 
 
+def resample_flows(daily, rule):
+    # min_count preserves unknown amounts and periods without observations.
+    return daily.set_index('date').resample(rule).sum(min_count=1).reset_index()
+
+
 if page == 'Overview':
-    daily = daily_data()
-    totals = daily[['subscriptions', 'redemptions', 'net_flow', 'transaction_count']].sum()
-    cols = st.columns(4)
-    for col, key in zip(cols[:3], COLORS):
-        col.metric(LABELS[key], money(totals[key]))
-    cols[3].metric('Transactions', f'{totals.transaction_count:,.0f}')
-    if totals.transaction_count == 0:
-        st.info('No transactions match this selection. The calendar below still includes zero-flow days.')
-    st.subheader('Money in, money out')
-    granularity = st.segmented_control('Display frequency', ['Daily', 'Weekly', 'Monthly'], default='Monthly')
-    rule = {'Daily': 'D', 'Weekly': 'W-MON', 'Monthly': 'MS'}[granularity or 'Monthly']
-    display = daily.set_index('date').resample(rule).sum().reset_index()
-    lines(display, columns=tuple(COLORS))
+    display = None
+    if supported('flow_' + basis_key) or supported('counts_' + basis_key):
+        daily = daily_data()
+        totals = daily[['subscriptions', 'redemptions', 'net_flow', 'transaction_count']].sum(min_count=1)
+        cols = st.columns(4)
+        if available('flow_' + basis_key, 'Flow totals'):
+            for col, key in zip(cols[:3], COLORS):
+                col.metric(LABELS[key], money(totals[key]))
+        if available('counts_' + basis_key, 'Transaction count'):
+            cols[3].metric('Transactions', f'{totals.transaction_count:,.0f}')
+        st.subheader('Money in, money out')
+        if available('flow_' + basis_key, 'Flow chart'):
+            granularity = st.segmented_control('Display frequency', ['Daily', 'Weekly', 'Monthly'], default='Monthly')
+            rule = {'Daily': 'D', 'Weekly': 'W-MON', 'Monthly': 'MS'}[granularity or 'Monthly']
+            display = resample_flows(daily, rule)
+            lines(display, columns=tuple(COLORS))
+    else:
+        available('flow_' + basis_key, 'Flow totals and chart')
     left, right = st.columns([1.25, 1])
     with left:
         st.subheader('Sector contribution')
-        sectors_data = sector_summary()
-        if sectors_data.empty:
-            st.info('No sector activity in this selection.')
-        else:
-            chart(px.bar(sectors_data, y='client_sector', x=['subscriptions', 'redemptions'],
-                         orientation='h', barmode='group', color_discrete_map=COLORS,
-                         labels={'value': 'GBP', 'client_sector': ''}))
+        if available('sector', 'Sector contribution · client_sector') and available('flow_' + basis_key, 'Sector flows'):
+            sectors_data = sector_summary()
+            if sectors_data.empty:
+                st.info('No sector activity in this selection.')
+            else:
+                chart(px.bar(sectors_data, y='client_sector', x=['subscriptions', 'redemptions'],
+                    orientation='h', barmode='group', color_discrete_map=COLORS,
+                    labels={'value': 'GBP', 'client_sector': ''}))
     with right:
         st.subheader('Fund value')
         st.caption('Whole-fund AUM. Sector and client filters do not apply.')
-        aum = fetch('fund_aum', start=start, end=end)
-        if not aum.empty:
-            st.metric('Closing AUM · latest selected date', money(aum.iloc[-1].closing_aum_gbp))
-            chart(px.line(aum, x='date', y='closing_aum_gbp', labels={'closing_aum_gbp': 'GBP'}, color_discrete_sequence=['#5773b7']))
-    with st.expander('Show flow totals and CSV download'):
-        table_export(display, 'overview_flows')
+        if available('aum', 'Fund value'):
+            aum = fetch('fund_aum', start=start, end=end)
+            if not aum.empty:
+                st.metric('Closing AUM · latest selected date', money(aum.iloc[-1].closing_aum_gbp))
+                chart(px.line(aum, x='date', y='closing_aum_gbp', labels={'closing_aum_gbp': 'GBP'}, color_discrete_sequence=['#5773b7']))
+    if display is not None:
+        with st.expander('Show flow totals and CSV download'):
+            table_export(display, 'overview_flows')
 
 elif page == 'Timing patterns':
-    st.write('Compare calendar patterns using all observed days, including days with no flows.')
-    daily = daily_data()
-    # Account exposure is counted on each date, respecting historical opening and closure.
-    exposure = fetch('active_clients', **filters)
-    pattern = st.radio('Calendar view', ['Weekday', 'Position in month', 'Month of year'], horizontal=True)
-    summary = analytics.timing_summary(daily, exposure, {'Weekday': 'weekday', 'Position in month': 'month_position', 'Month of year': 'month'}[pattern])
-    chart(px.bar(summary, x='period', y=['subscriptions_per_day', 'redemptions_per_day'], barmode='group',
-                 color_discrete_sequence=list(COLORS.values()), labels={'period': '', 'value': 'Average GBP per observed day'}))
-    a, b = st.columns(2)
-    with a:
-        chart(px.bar(summary, x='period', y='transactions_per_1000_client_days', labels={'period': '', 'transactions_per_1000_client_days': 'Transactions per 1,000 active client-days'}, color_discrete_sequence=['#5773b7']))
-    with b:
-        chart(px.bar(summary, x='period', y='average_transaction_gbp', labels={'period': '', 'average_transaction_gbp': 'Average transaction · GBP'}, color_discrete_sequence=['#16877c']))
-    st.caption('Client-days count accounts open on each observed date. Rates are undefined when exposure or transaction count is zero. Patterns describe this synthetic sample.')
-    table_export(summary, 'timing_patterns')
+    st.write('Compare event sizes and, where complete coverage is confirmed, daily calendar patterns.')
+    timing_available = available('timing', 'Calendar timing analysis')
+    observations_available = supported('flow_' + basis_key) or supported('counts_' + basis_key)
+    if not observations_available:
+        available('flow_' + basis_key, 'Timing flow observations')
+    if observations_available:
+        daily = daily_data()
+        exposure = fetch('active_clients', **filters) if supported('exposure') else None
+        pattern = st.radio('Calendar view', ['Weekday', 'Position in month', 'Month of year'], horizontal=True)
+        summary = analytics.timing_summary(daily, exposure, {'Weekday': 'weekday', 'Position in month': 'month_position', 'Month of year': 'month'}[pattern])
+        if not timing_available:
+            for column in ('subscriptions_per_day', 'redemptions_per_day', 'client_days', 'transactions_per_1000_client_days'):
+                summary[column] = float('nan')
+        elif exposure is None:
+            summary['client_days'] = float('nan')
+            summary['transactions_per_1000_client_days'] = float('nan')
+        if timing_available and available('flow_' + basis_key, 'Average daily flows'):
+            chart(px.bar(summary, x='period', y=['subscriptions_per_day', 'redemptions_per_day'], barmode='group',
+                color_discrete_sequence=list(COLORS.values()), labels={'period': '', 'value': 'Average GBP per observed day'}))
+        a, b = st.columns(2)
+        with a:
+            if available('exposure', 'Exposure-adjusted transaction rates') and available('counts_' + basis_key, 'Transaction rates'):
+                chart(px.bar(summary, x='period', y='transactions_per_1000_client_days', labels={'period': '', 'transactions_per_1000_client_days': 'Transactions per 1,000 active client-days'}, color_discrete_sequence=['#5773b7']))
+        with b:
+            if available('flow_' + basis_key, 'Average transaction size') and available('counts_' + basis_key, 'Average transaction size'):
+                chart(px.bar(summary, x='period', y='average_transaction_gbp', labels={'period': '', 'average_transaction_gbp': 'Average transaction · GBP'}, color_discrete_sequence=['#16877c']))
+        st.caption('Client-days count accounts open on each observed date. Rates are undefined when exposure or transaction count is zero.')
+        table_export(summary, 'timing_patterns')
 
 elif page == 'Client behaviour':
-    group = st.radio('Compare groups', ['Sector', 'Client type'], horizontal=True)
-    group_col = 'client_sector' if group == 'Sector' else 'client_type'
-    summary = sector_summary(group_col)
-    if summary.empty:
-        st.info('No transactions match the selected period and filters.')
-    else:
-        chart(px.bar(summary, y=group_col, x='net_flow', orientation='h', labels={group_col: '', 'net_flow': 'Net flow · GBP'}, color_discrete_sequence=['#16877c']))
-        with st.expander('Group frequency and transaction size'):
-            table_export(summary, 'client_groups')
-    concentration = fetch('client_concentration', **filters, basis=basis_key)
-    if not concentration.empty:
-        gross = concentration.gross_flow_gbp.sum()
-        c1, c2, c3 = st.columns(3)
-        c1.metric('Transacting clients', f'{len(concentration):,}')
-        c2.metric('Top 10 share of gross flows', f'{concentration.head(10).gross_flow_gbp.sum() / gross:.1%}' if gross else '—')
-        c3.metric('Largest client share', f'{concentration.iloc[0].gross_flow_gbp / gross:.1%}' if gross else '—')
-        with st.expander('Client concentration and frequency'):
-            table_export(concentration, 'client_concentration')
-    st.subheader('Compare client histories')
-    st.caption('Select 2–50 clients to compare. Empty periods are zero while accounts are open, and unavailable outside their lifetime.')
-    candidates = selected_clients or clients.client_id.tolist()
-    picks = st.multiselect('Clients for comparison', candidates, format_func=lambda key: names.get(key, key), max_selections=50)
-    frequency = st.radio('Comparison frequency', ['Monthly', 'Weekly'], horizontal=True)
-    target = st.selectbox('Flow measure', list(LABELS), format_func=LABELS.get)
-    if picks:
-        unit = 'month' if frequency == 'Monthly' else 'week'
-        threshold = 12 if unit == 'month' else 26
-        correlation, overlap, histories = fetch('correlations', client_ids=picks, unit=unit, target=target, start=start, end=end, basis=basis_key)
-        if histories.empty:
-            st.info('The selected clients have no open-account periods in this date range.')
+    available('counts_' + basis_key, 'Transaction frequency and average size')
+    groups = []
+    for feature, label in [('sector', 'Sector'), ('type', 'Client type')]:
+        if available(feature, label + ' grouping'):
+            groups.append(label)
+    if groups and available('flow_' + basis_key, 'Group flow comparisons'):
+        group = st.radio('Compare groups', groups, horizontal=True)
+        group_col = 'client_sector' if group == 'Sector' else 'client_type'
+        summary = sector_summary(group_col)
+        if summary.empty:
+            st.info('No transactions match the selected period and filters.')
         else:
-            chart(px.line(histories, x='period', y='amount', color='client_id', labels={'period': '', 'amount': f'{LABELS[target]} · GBP'}))
-            if len(picks) < 2:
-                st.info('Choose another client to display pairwise correlations.')
-            elif correlation.notna().sum().sum() == 0:
-                st.info(f'No valid correlations: at least {threshold} shared periods and variation in both histories are required.')
+            chart(px.bar(summary, y=group_col, x='net_flow', orientation='h', labels={group_col: '', 'net_flow': 'Net flow · GBP'}, color_discrete_sequence=['#16877c']))
+            with st.expander('Group frequency and transaction size'):
+                table_export(summary, 'client_groups')
+    if available('concentration', 'Client concentration') and available('flow_' + basis_key, 'Client concentration flows'):
+        concentration = fetch('client_concentration', **filters, basis=basis_key)
+        if not concentration.empty:
+            gross = concentration.gross_flow_gbp.sum()
+            c1, c2, c3 = st.columns(3)
+            c1.metric('Transacting clients', f'{len(concentration):,}')
+            c2.metric('Top 10 share of gross flows', f'{concentration.head(10).gross_flow_gbp.sum() / gross:.1%}' if gross else '—')
+            c3.metric('Largest client share', f'{concentration.iloc[0].gross_flow_gbp / gross:.1%}' if gross else '—')
+            with st.expander('Client concentration and frequency'):
+                table_export(concentration, 'client_concentration')
+    st.subheader('Compare client histories')
+    if available('correlations', 'Client histories and correlations') and available('flow_' + basis_key, 'Client history flows'):
+        st.caption('Select 2–50 clients to compare. Empty periods are zero while accounts are open, and unavailable outside their lifetime.')
+        candidates = selected_clients or clients.client_id.tolist()
+        picks = st.multiselect('Clients for comparison', candidates, format_func=lambda key: names.get(key, key), max_selections=50, key='compare_clients')
+        frequency = st.radio('Comparison frequency', ['Monthly', 'Weekly'], horizontal=True)
+        target = st.selectbox('Flow measure', list(LABELS), format_func=LABELS.get)
+        if picks:
+            unit = 'month' if frequency == 'Monthly' else 'week'
+            threshold = 12 if unit == 'month' else 26
+            correlation, overlap, histories = fetch('correlations', client_ids=picks, unit=unit, target=target, start=start, end=end, basis=basis_key)
+            if histories.empty:
+                st.info('The selected clients have no open-account periods in this date range.')
             else:
-                figure = go.Figure(go.Heatmap(z=correlation.values, x=correlation.columns, y=correlation.index,
-                    customdata=overlap.values, zmin=-1, zmax=1, zmid=0, colorscale='RdBu',
-                    hovertemplate='%{y} / %{x}<br>Correlation: %{z:.3f}<br>Shared periods: %{customdata}<extra></extra>'))
-                chart(figure)
-            st.caption(f'Pearson correlation, minimum {threshold} shared {frequency.lower()} periods. Blank cells indicate insufficient overlap or a constant series. Correlation does not establish causation.')
-            with st.expander('Shared observation counts'):
-                st.dataframe(overlap)
-            table_export(histories, 'client_histories')
+                chart(px.line(histories, x='period', y='amount', color='client_id', labels={'period': '', 'amount': f'{LABELS[target]} · GBP'}))
+                if len(picks) < 2:
+                    st.info('Choose another client to display pairwise correlations.')
+                elif correlation.notna().sum().sum() == 0:
+                    st.info(f'No valid correlations: at least {threshold} shared periods and variation in both histories are required.')
+                else:
+                    figure = go.Figure(go.Heatmap(z=correlation.values, x=correlation.columns, y=correlation.index,
+                        customdata=overlap.values, zmin=-1, zmax=1, zmid=0, colorscale='RdBu',
+                        hovertemplate='%{y} / %{x}<br>Correlation: %{z:.3f}<br>Shared periods: %{customdata}<extra></extra>'))
+                    chart(figure)
+                st.caption(f'Pearson correlation, minimum {threshold} shared {frequency.lower()} periods. Blank cells indicate insufficient overlap or a constant series. Correlation does not establish causation.')
+                with st.expander('Shared observation counts'):
+                    st.dataframe(overlap)
+                table_export(histories, 'client_histories')
 
 elif page == 'Segments & stress':
-    from segments_page import render as render_segments
-    render_segments(chart, money, table_export, current_fingerprint=fingerprint)
+    if available('segments', 'Segments & stress'):
+        from segments_page import render as render_segments
+        render_segments(chart, money, table_export, current_fingerprint=fingerprint)
 
 elif page == 'Forecasts':
-    monthly_view(fingerprint, sectors, maximum)
+    if available('forecast', 'Forecasting'):
+        monthly_view(fingerprint, sectors, maximum)
     with st.expander('Scheduled income distributions · whole fund'):
-        st.caption('Declared payments are separate obligations and are excluded from predicted client redemptions. '
-                   'Historical schedule availability is unknown; these schedules are not used in backtests.')
-        upcoming = fetch('scheduled_distributions', after=maximum)
-        if upcoming.empty:
-            st.info('No declared future income payments for the fund.')
-        else:
-            table_export(upcoming, 'scheduled_distributions')
+        st.caption('Declared payments are separate obligations and are excluded from predicted client redemptions.')
+        if available('distributions', 'Scheduled income distributions'):
+            upcoming = fetch('scheduled_distributions', after=maximum)
+            if upcoming.empty:
+                st.info('No declared future income payments for the fund.')
+            else:
+                table_export(upcoming, 'scheduled_distributions')
 
 else:
     st.write('Trace the dashboard back to its source files and inspect import validation.')
     counts = fetch('table_counts')
     for col, row in zip(st.columns(4), counts.itertuples()):
         col.metric(row.dataset, f'{row.rows:,}')
-    st.caption(f'Database size: {DB_PATH.stat().st_size / 1024**2:,.1f} MiB · Fund observation window: {minimum} to {maximum}')
+    st.caption(f'Database size: {DB_PATH.stat().st_size / 1024**2:,.1f} MiB · Data dates: {minimum} to {maximum}')
+    st.subheader('Feature availability')
+    availability = pd.DataFrame([dict(feature=name, available=value['available'],
+        reason='; '.join(value['reasons'])) for name, value in capabilities.items()])
+    st.dataframe(availability, hide_index=True)
     st.subheader('Import provenance and validation')
     for row in runs:
         st.json(row, expanded=False)
     st.subheader('Query performance')
     report = db.CLEAN_DIR / 'benchmark.json'
     if report.exists():
-        st.json(json.loads(report.read_text()))
-    else:
-        st.caption('No saved benchmark report yet. This check measures a fresh database connection and an uncached sector aggregate query.')
-    if st.button('Measure an uncached query'):
-        tick = perf_counter()
-        try:
-            with db.connect() as connection:
-                connection.execute(benchmark.QUERIES['sector_totals']).fetchall()
-        except db.DatabaseUnavailable as exc:
-            not_ready(exc)
-        elapsed = perf_counter() - tick
-        st.metric('Uncached query including connection', f'{elapsed * 1000:,.1f} ms')
-        st.caption('A single observation, not a full median/p95 benchmark. Target: common aggregate queries below one second.')
-    st.info('Refresh data with the dashboard stopped. This workspace uses only the supplied files; raw files are preserved.')
+        data = json.loads(report.read_text())
+        if data.get('source_fingerprint', data.get('fingerprint')) == fingerprint:
+            st.json(data)
+        else:
+            st.info('The saved benchmark belongs to another import. Run benchmark again to refresh it.')
+    if available('sector', 'Sector query benchmark') and supported('flow_cash') and supported('timing'):
+        if st.button('Measure an uncached query'):
+            tick = perf_counter()
+            try:
+                with db.connect() as connection:
+                    connection.execute(benchmark.QUERIES['sector_totals']).fetchall()
+            except db.DatabaseUnavailable as exc:
+                not_ready(exc)
+            elapsed = perf_counter() - tick
+            st.metric('Uncached query including connection', f'{elapsed * 1000:,.1f} ms')
+            st.caption('A single observation, not a full median/p95 benchmark.')
+    st.info('Refresh data with the dashboard stopped. Raw source files are preserved.')
 
 st.divider()
-st.caption(f'SYNTHETIC DATA · GBP · Source identity {identity[-16:]} · Net flow = subscriptions − redemptions')
+st.caption(f'GBP · Source identity {identity[-16:]} · Net flow = subscriptions − redemptions')

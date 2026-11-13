@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .history_backtest import OUTPUT
+from . import analytics, db
 
 INTERVAL_OUTPUT = OUTPUT / 'intervals'
 LEVEL = .8
@@ -77,10 +78,13 @@ def calibrate(detail, monthly, metadata):
 
 
 def run(source=OUTPUT, output=INTERVAL_OUTPUT):
+    analytics.require_feature('forecast')
     source=Path(source); output=Path(output)
     detail=pd.read_csv(source/'detail.csv',parse_dates=['date'])
     monthly=pd.read_csv(source/'monthly.csv')
     metadata=json.loads((source/'metadata.json').read_text())
+    if metadata.get('source_fingerprint') != db.require_import()['fingerprint']:
+        raise ValueError('Backtest artifacts belong to another data snapshot; regenerate them first')
     result=calibrate(detail,monthly,metadata)
     output.parent.mkdir(parents=True,exist_ok=True)
     stage=Path(tempfile.mkdtemp(prefix='history-intervals-',dir=output.parent))

@@ -6,10 +6,33 @@ import json
 def main():
     parser = argparse.ArgumentParser(description='Fund flow analytics pipeline')
     parser.add_argument('command', choices=['ingest', 'forecast', 'horizon-backtest', 'monthly-forecast', 'daily-forest-backtest', 'history-window-backtest', 'history-window-intervals', 'performance-backtest', 'selected-forecast', 'segments', 'benchmark'])
+    parser.add_argument('--raw-dir', type=str, help='Folder of canonical CSV inputs (ingest only)')
+    parser.add_argument('--scan-rows', type=int, default=100, help='Maximum records scanned for headers')
+    parser.add_argument('--source', action='append', default=[], metavar='TABLE=PATH')
+    parser.add_argument('--header-row', action='append', default=[], metavar='TABLE=N')
     args = parser.parse_args()
+    def pairs(values, convert=str):
+        result = {}
+        for value in values:
+            if '=' not in value:
+                parser.error('Overrides must be TABLE=VALUE')
+            table, entry = value.split('=', 1)
+            if table in result:
+                parser.error(f'Duplicate override for {table}')
+            try:
+                result[table] = convert(entry)
+            except ValueError:
+                parser.error(f'Invalid override {value}')
+        return result
+    if args.command not in ('ingest', 'benchmark'):
+        from .analytics import require_feature
+        require_feature('segments' if args.command == 'segments' else 'forecast')
     if args.command == 'ingest':
         from .db import ingest
-        print(json.dumps(ingest(), default=str, indent=2))
+        options = dict(scan_rows=args.scan_rows, sources=pairs(args.source), header_rows=pairs(args.header_row, int))
+        if args.raw_dir:
+            options['raw_dir'] = args.raw_dir
+        print(json.dumps(ingest(**options), default=str, indent=2))
     elif args.command == 'forecast':
         from .forecast import run_forecasts
         run_forecasts()
