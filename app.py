@@ -473,8 +473,11 @@ else:
         st.caption('No saved benchmark report yet. This check measures a fresh database connection and an uncached sector aggregate query.')
     if st.button('Measure an uncached query'):
         tick = perf_counter()
-        with db.connect() as connection:
-            connection.execute(benchmark.QUERIES['sector_totals']).fetchall()
+        try:
+            with db.connect() as connection:
+                connection.execute(benchmark.QUERIES['sector_totals']).fetchall()
+        except db.DatabaseUnavailable as exc:
+            not_ready(exc)
         elapsed = perf_counter() - tick
         st.metric('Uncached query including connection', f'{elapsed * 1000:,.1f} ms')
         st.caption('A single observation, not a full median/p95 benchmark. Target: common aggregate queries below one second.')
