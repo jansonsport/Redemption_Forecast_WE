@@ -17,10 +17,10 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
-from .db import connect
-from .forecast import ROOT, Spec, predict
+from . import analytics, db
+from .forecast import Spec, predict
 
-OUTPUT = ROOT / 'data/clean/monthly_forecasts'
+OUTPUT = db.CLEAN_DIR / 'monthly_forecasts'
 VERSION = 'monthly-rf-v1'
 SEED = 42
 GRID = [(3, 6), (3, 12), (5, 6), (5, 12)]
@@ -241,9 +241,9 @@ def compute(history, fingerprint):
 
 
 def run(output=OUTPUT):
-    with connect() as con:
-        history = con.execute('SELECT date,client_sector,subscriptions,redemptions FROM daily_sector ORDER BY date,client_sector').df()
-        fingerprint = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()[0]
+    with db.connect() as con:
+        history = analytics.sector_history(con)
+        fingerprint = db.require_import(con)['fingerprint']
     result = compute(history,fingerprint)
     output = Path(output)
     output.parent.mkdir(parents=True,exist_ok=True)
