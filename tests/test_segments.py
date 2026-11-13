@@ -25,8 +25,9 @@ HANDOFF = ROOT / 'handoff/segments_stress/data_outputs'
 class SegmentStudyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.out = S.run(write=False)
-        cls.bundle = B.make_bundle(cls.out)
+        cls.data = S.load()
+        cls.out = S.run(write=False, data=cls.data)
+        cls.bundle = B.make_bundle(cls.out, data=cls.data)
         cls.engine = StressEngine(cls.bundle)
         cls.default = default_definition(cls.bundle['meta']['episodes'])
 
