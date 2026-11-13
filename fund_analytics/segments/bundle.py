@@ -1,12 +1,12 @@
 """Offline build of the Segments & stress page data (`python -m fund_analytics segments`).
 
-Runs the ported study pipeline once, writes its `11_*.csv` tables and a single pickle bundle under
-data/clean/segments, and copies the study notebook HTML for static serving. Recomputes nothing
-statistical itself. The bundle carries the source fingerprint so the page can refuse stale data.
+Loads one database snapshot, runs the ported study pipeline on it, writes its `11_*.csv` tables and a
+single pickle bundle under data/clean/segments, and copies the study notebook HTML for static serving.
+Recomputes nothing statistical itself. The bundle carries the snapshot's import fingerprint so the page
+can refuse stale data.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import pickle
 import shutil
@@ -16,7 +16,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .. import db
 from . import pipeline as S
 
 VERSION = 'segments-v1'
@@ -24,15 +23,6 @@ OUT = S.OUT
 BUNDLE = OUT / 'bundle.pkl'
 NOTEBOOK_SRC = S.ROOT / 'handoff/segments_stress/analysis/11_segments_correlation_stress.html'
 STATIC_DIR = S.ROOT / 'static/segments'
-
-
-def source_fingerprint(raw_dir: Path = db.RAW_DIR) -> str:
-    """Same formula as db.ingest, so the page can compare it with the latest import."""
-    hashes = {}
-    for filename in db.FILES.values():
-        with (Path(raw_dir) / filename).open('rb') as stream:
-            hashes[filename] = hashlib.file_digest(stream, 'sha256').hexdigest()
-    return hashlib.sha256(json.dumps([db.SCHEMA_VERSION, hashes], sort_keys=True).encode()).hexdigest()
 
 
 def segment_order(profiles: pd.DataFrame) -> list[str]:
@@ -43,11 +33,12 @@ def segment_order(profiles: pd.DataFrame) -> list[str]:
 
 def build(cfg=S.CONFIG) -> dict:
     started = time.perf_counter()
-    out = S.run(cfg, write=True)
+    data = S.load(cfg)
+    out = S.run(cfg, write=True, data=data)
     if not out['checks'].passed.all():
         failed = out['checks'].loc[~out['checks'].passed, 'check'].tolist()
         raise ValueError(f'Segments pipeline data checks failed: {failed}')
-    bundle = make_bundle(out, cfg)
+    bundle = make_bundle(out, cfg, data)
     meta = bundle['meta']
     OUT.mkdir(parents=True, exist_ok=True)
     meta['duration_seconds'] = time.perf_counter() - started
@@ -62,19 +53,21 @@ def build(cfg=S.CONFIG) -> dict:
     return meta
 
 
-def make_bundle(out: dict, cfg=S.CONFIG) -> dict:
-    """The page's data contract: pipeline outputs plus client attributes and fund daily series."""
+def make_bundle(out: dict, cfg=S.CONFIG, data=None) -> dict:
+    """The page's data contract: pipeline outputs plus client attributes and fund daily series.
+
+    `data` is the snapshot `out` was computed from (`S.load()` when not given)."""
+    data = data or S.load(cfg)
     out = {k: v for k, v in out.items() if k != 'rate'}  # the engine recomputes rates from seg_aum / seg_net
     c = cfg['clients']
-    clients = pd.read_csv(S.RAW / cfg['files']['clients'], parse_dates=[c['open'], c['close']])
-    clients = clients[[c['id'], c['name'], c['sector'], c['type'], c['country'], c['region'], c['share_class'],
+    clients = data['clients'][[c['id'], c['name'], c['sector'], c['type'], c['country'], c['region'], c['share_class'],
                        c['open'], c['close'], c['balance']]].set_index(c['id'])
     fu = cfg['fund']
-    fund = pd.read_csv(S.RAW / cfg['files']['fund'], parse_dates=[fu['date']]).set_index(fu['date'])
+    fund = data['fund'].set_index(fu['date'])
     daily = pd.DataFrame({'price': fund[fu['prices']['Accumulation']], 'fund_sub': fund[fu['sub']],
                           'fund_red': fund[fu['red']], 'fund_open': fund[fu['open_aum']]}).reindex(out['seg_aum'].index)
     k = int(out['selection'].loc[out['selection'].chosen, 'k'].iloc[0])
-    meta = dict(version=VERSION, source_fingerprint=source_fingerprint(), built_at=pd.Timestamp.now().isoformat(timespec='seconds'),
+    meta = dict(version=VERSION, source_fingerprint=data['fingerprint'], built_at=pd.Timestamp.now().isoformat(timespec='seconds'),
                 k=k, k_auto=int(out['selection'].loc[out['selection'].auto_choice, 'k'].iloc[0]),
                 ari_median=float(np.median(out['ari'])), config_name=cfg['name'],
                 episodes={k_: list(v) for k_, v in cfg['named_episodes'].items()}, eligibility=cfg['eligibility'],

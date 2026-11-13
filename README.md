@@ -17,6 +17,26 @@ venv/bin/python -m streamlit run app.py
 
 Open the local URL printed by Streamlit. Stop the dashboard before rebuilding the database. Import and forecast generation are explicit commands; page navigation does not retrain models or reread raw CSVs.
 
+## Data flow
+
+```text
+data/raw/*.csv ──ingest──▶ DuckDB database ──▶ forecast, monthly-forecast, segments ──▶ files under data/clean
+                                         └──▶ dashboard (app.py)
+```
+
+- `ingest` (`fund_analytics/db.py`) is the only code that reads the raw CSVs. It validates and reconciles
+  them and replaces the database tables in one transaction; an unchanged snapshot is a no-op. Each import
+  is recorded in `ingestion_runs`, and the latest import (last inserted row) gives the fingerprint that
+  every output carries.
+- Everything else reads the database through `fund_analytics/analytics.py`: the dashboard's queries, the
+  forecast histories and the segments study's source tables. Outputs (forecasts, monthly forecasts,
+  segments, benchmark) are still files under `data/clean`; pages refuse outputs built from another import.
+- The database is `data/clean/fund_analytics.duckdb` unless `FUND_ANALYTICS_DB` names another file, e.g.
+  `FUND_ANALYTICS_DB=/tmp/other.duckdb venv/bin/python -m fund_analytics ingest`. Set it the same way for
+  the build commands and `streamlit run app.py`. The tests use their own temporary database.
+- `ingest` needs the dashboard stopped: DuckDB lets one process write or several processes read, not
+  both. A lock clash is reported as "The database is not ready" (dashboard) or `DatabaseUnavailable`.
+
 ## Monthly random forest comparison
 
 ```sh
@@ -62,10 +82,10 @@ venv/bin/python -m fund_analytics segments
 Builds the **Segments & stress** page data in about 10 seconds: client segments
 (k-means), segment and sector flow correlation (heat maps in section 4),
 concentration and liquidity stress tests.
-It reads `data/raw`, writes the `11_*.csv` tables and `bundle.pkl` to
+It reads one snapshot of the database tables, writes the `11_*.csv` tables and `bundle.pkl` to
 `data/clean/segments`, and copies the study notebook to `static/segments` for the
 page's "Open full study notebook" link. Rebuild after every new import: the page
-refuses a bundle built from a different source fingerprint. Restart the dashboard
+refuses a bundle built from a different import (or when there is no import). Restart the dashboard
 after rebuilding.
 
 This is **descriptive analysis of relationships between clients, not a
@@ -79,8 +99,8 @@ AUM; see the PRD correctness rules.
 The study is ported from `handoff/segments_stress/` (the original analysis,
 notebook and reference UI). Changes for this repository:
 
-- Paths point at `data/raw` and `data/clean/segments`, and the code is updated
-  for pandas 3 (read-only arrays; `'YE'`/`'ME'` resample aliases).
+- Inputs come from the database tables (`CONFIG['tables']`) instead of the CSVs, outputs go to
+  `data/clean/segments`, and the code is updated for pandas 3 (read-only arrays; `'YE'`/`'ME'` resample aliases).
 - **k is fixed at 7** (`CONFIG['k_fixed']`). On silhouette, 7 and 8 groups are
   nearly tied, and the scikit-learn version decides which wins. The automatic
   choice is still shown on the page and is 8 in this environment.

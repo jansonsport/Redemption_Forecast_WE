@@ -1,7 +1,7 @@
 """Client segmentation, segment flow correlation, concentration and liquidity stress tests.
 
 Ported from handoff/segments_stress/analysis/segment_stress.py (the study's source of truth). Changes:
-paths read data/raw and write data/clean/segments; pandas 3 compatibility (read-only arrays, 'YE'/'ME'
+inputs come from the analytics database (one snapshot per run) and outputs go to data/clean/segments; pandas 3 compatibility (read-only arrays, 'YE'/'ME'
 aliases); k is fixed at 7 via CONFIG['k_fixed'] and the main k-means fit uses 50 restarts
 (CONFIG['n_init']) so the result does not depend on the scikit-learn version's random starts (see README). Descriptive analysis, not a forecast.
 
@@ -10,7 +10,6 @@ on another fund database by changing one dictionary. Phases follow the analysis 
 0 inventory, 1 data checks, 2 fund context, 3 client features, 4 segmentation, 5 flow correlation,
 6 concentration, 7 stress tests, 8 outputs.
 """
-from pathlib import Path
 import json
 import numpy as np
 import pandas as pd
@@ -18,14 +17,14 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, adjusted_rand_score
 from sklearn.preprocessing import StandardScaler
 
-ROOT = Path(__file__).resolve().parents[2]
-RAW = ROOT / 'data/raw'
-OUT = ROOT / 'data/clean/segments'
+from .. import analytics, db
+
+ROOT = db.ROOT
+OUT = db.CLEAN_DIR / 'segments'
 
 CONFIG = dict(
     name='Charity fund (synthetic, 2006–2026)',
-    files=dict(clients='synthetic_clients.csv', flows='synthetic_client_flows.csv',
-               fund='synthetic_fund_daily.csv', payables='synthetic_income_distributions.csv'),
+    tables=dict(clients='clients', flows='client_flows', fund='fund_daily', payables='income_distributions'),
     clients=dict(id='client_id', name='client_name', sector='client_sector', type='client_type', share_class='unit_type',
                  open='account_open_date', close='account_close_date', balance='client_aum_gbp', country='country', region='region'),
     flows=dict(id='transaction_id', client='client_id', trade_date='trade_date', cash_date='cash_flow_date', amount='flow_gbp',
@@ -35,7 +34,6 @@ CONFIG = dict(
               prices={'Income': 'income_unit_price_gbp', 'Accumulation': 'accumulation_unit_price_gbp'},
               payables=['income_distributions_payable_gbp', 'redemptions_awaiting_payment_gbp']),
     payables=dict(client='client_id', date='payment_date', amount='distribution_gbp', status='payment_status', pending=['Declared', 'Pending', 'Payable']),
-    date_format=None,                      # pandas infers ISO dates; set e.g. '%d/%m/%Y' for other sources
     redemption_sign=-1,                    # redemptions are negative amounts in the flow table
     keep_status=['Settled'],               # drop cancelled / pending / reversed
     internal_flow_types=['switch', 'transfer'],  # netted out when a flow-type column exists
@@ -55,14 +53,14 @@ CONFIG = dict(
 
 
 # ---------------------------------------------------------------- Phase 0
-def load(cfg=CONFIG):
-    F = cfg['files']; rd = lambda f, dates: pd.read_csv(RAW / f, parse_dates=dates, date_format=cfg['date_format'])
-    c = cfg['clients']; fl = cfg['flows']; fu = cfg['fund']; pa = cfg['payables']
-    clients = rd(F['clients'], [c['open'], c['close']])
-    flows = rd(F['flows'], [fl['trade_date'], fl['cash_date']])
-    fund = rd(F['fund'], [fu['date']])
-    pay = rd(F['payables'], [pa['date']]) if F.get('payables') else None
-    return clients, flows, fund, pay
+def load(cfg=CONFIG, con=None):
+    """One database snapshot: the typed source tables plus the fingerprint of the import they come from."""
+    T = cfg['tables']
+    with db.using(con) as c:
+        tables = analytics.load_tables([t for t in T.values() if t], c)
+        fingerprint = db.require_import(c)['fingerprint']
+    return dict(clients=tables[T['clients']], flows=tables[T['flows']], fund=tables[T['fund']],
+                pay=tables[T['payables']] if T.get('payables') else None, fingerprint=fingerprint)
 
 
 def inventory(cfg, clients, flows, fund, pay):
@@ -75,7 +73,7 @@ def inventory(cfg, clients, flows, fund, pay):
         present = [f for f in fields if df is not None and m.get(f) in df.columns]
         missing = [f for f in fields if f not in present]
         extra = 'unit prices: ' + ', '.join(cfg['fund']['prices']) if role == 'Fund daily' else ''
-        rows.append(dict(role=role, table=cfg['files'].get({'Client master': 'clients', 'Transactions': 'flows', 'Fund daily': 'fund', 'Known future outflows': 'payables'}[role]),
+        rows.append(dict(role=role, table=cfg['tables'].get({'Client master': 'clients', 'Transactions': 'flows', 'Fund daily': 'fund', 'Known future outflows': 'payables'}[role]),
                          rows=0 if df is None else len(df), fields_present=', '.join(present), fields_missing=', '.join(missing) or '—', notes=extra))
     return pd.DataFrame(rows)
 
@@ -524,8 +522,10 @@ def grouping_comparison(cfg, clients, f, fund, flags, k, split='2016-11-01'):
 
 
 # ---------------------------------------------------------------- run everything
-def run(cfg=CONFIG, write=True, prefix='11_'):
-    clients, flows, fund, pay = load(cfg)
+def run(cfg=CONFIG, write=True, prefix='11_', data=None):
+    """Every phase on one snapshot (`load()` when not given)."""
+    data = data or load(cfg)
+    clients, flows, fund, pay = (data[k] for k in ('clients', 'flows', 'fund', 'pay'))
     inv = inventory(cfg, clients, flows, fund, pay)
     f, checks = clean_and_check(cfg, clients, flows, fund)
     f, prices, unit_check = rebuild_units(cfg, clients, f, fund)

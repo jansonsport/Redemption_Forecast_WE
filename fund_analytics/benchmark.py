@@ -3,8 +3,7 @@ import json
 import platform
 import statistics
 import time
-from pathlib import Path
-from .db import connect
+from . import db
 
 QUERIES = {
     'sector_totals': 'SELECT client_sector, sum(subscriptions), sum(redemptions) FROM daily_sector GROUP BY 1',
@@ -15,7 +14,7 @@ QUERIES = {
 
 def run():
     results = {}
-    with connect() as con:
+    with db.connect() as con:
         for name, sql in QUERIES.items():
             timings = []
             for _ in range(20):
@@ -24,8 +23,7 @@ def run():
                 timings.append(time.perf_counter() - started)
             results[name] = {'median_seconds': statistics.median(timings), 'p95_seconds': sorted(timings)[18], 'sql': sql}
     report = {'machine': platform.platform(), 'processor': platform.processor(), 'python': platform.python_version(), 'runs_per_query': 20, 'cache_note': 'No application cache; OS and database caches may be warm.', 'queries': results}
-    db = Path('data/clean/fund_analytics.duckdb')
-    report['database_bytes'] = db.stat().st_size
-    path = Path('data/clean/benchmark.json')
+    report['database_bytes'] = db.DB_PATH.stat().st_size
+    path = db.CLEAN_DIR / 'benchmark.json'
     path.write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))

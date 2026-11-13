@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from fund_analytics import db
 from fund_analytics.segments import bundle as B
 from fund_analytics.segments import pipeline as S
 from fund_analytics.segments import views as V
@@ -24,8 +25,9 @@ HANDOFF = ROOT / 'handoff/segments_stress/data_outputs'
 class SegmentStudyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.out = S.run(write=False)
-        cls.bundle = B.make_bundle(cls.out)
+        cls.data = S.load()
+        cls.out = S.run(write=False, data=cls.data)
+        cls.bundle = B.make_bundle(cls.out, data=cls.data)
         cls.engine = StressEngine(cls.bundle)
         cls.default = default_definition(cls.bundle['meta']['episodes'])
 
@@ -177,6 +179,23 @@ class SegmentStudyTests(unittest.TestCase):
         self.assertEqual(rv['next'].client_id, 'C024578')
 
 
+def _render_with(fingerprint):
+    from segments_page import render
+    render(lambda *a, **k: None, str, lambda *a, **k: None, current_fingerprint=fingerprint)
+
+
+class SegmentPageFingerprintTests(unittest.TestCase):
+    def test_page_requires_the_latest_import(self):
+        if not B.BUNDLE.exists():
+            self.skipTest('Build the segment study first.')
+        from streamlit.testing.v1 import AppTest
+        built = B.load()['meta']['source_fingerprint']
+        for fingerprint, refused in ((None, True), ('other', True), (built, False)):
+            at = AppTest.from_function(_render_with, args=(fingerprint,), default_timeout=120).run()
+            self.assertFalse(at.exception, [e.value for e in at.exception])
+            self.assertEqual(any('different data import' in w.value for w in at.warning), refused, fingerprint)
+
+
 class SegmentPageRenderTests(unittest.TestCase):
     """Every section and its main controls render with no NaN/undefined/Infinity text or forecasting wording."""
     BAD = re.compile(r'NaN|\bnan\b|undefined|Infinity|\binf\b|\[object')
@@ -184,7 +203,7 @@ class SegmentPageRenderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not (ROOT / 'data/clean/fund_analytics.duckdb').exists() or not B.BUNDLE.exists():
+        if not db.DB_PATH.exists() or not B.BUNDLE.exists():
             raise unittest.SkipTest('Build the database and the segment study first (ingest, then segments).')
         from streamlit.testing.v1 import AppTest
         cls.at = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=180)

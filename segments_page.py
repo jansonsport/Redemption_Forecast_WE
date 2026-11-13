@@ -60,7 +60,7 @@ def render(chart, money, table_export, current_fingerprint=None):
     stat = B.BUNDLE.stat()
     bundle, engine = _load((stat.st_mtime_ns, stat.st_size))
     meta, o = bundle['meta'], bundle['out']
-    if current_fingerprint and meta['source_fingerprint'] != current_fingerprint:
+    if meta['source_fingerprint'] != current_fingerprint:
         st.warning('The segment study was built from a different data import. Rebuild it before using this page.')
         st.code('venv/bin/python -m fund_analytics segments', language='bash')
         return
