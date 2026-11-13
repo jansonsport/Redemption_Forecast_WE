@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from fund_analytics import db
 from fund_analytics.segments import bundle as B
 from fund_analytics.segments import pipeline as S
 from fund_analytics.segments import views as V
@@ -184,7 +185,7 @@ class SegmentPageRenderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not (ROOT / 'data/clean/fund_analytics.duckdb').exists() or not B.BUNDLE.exists():
+        if not db.DB_PATH.exists() or not B.BUNDLE.exists():
             raise unittest.SkipTest('Build the database and the segment study first (ingest, then segments).')
         from streamlit.testing.v1 import AppTest
         cls.at = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=180)

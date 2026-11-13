@@ -15,7 +15,7 @@ import streamlit as st
 from fund_analytics import db
 
 ROOT = Path(__file__).resolve().parent
-DB_PATH = ROOT / 'data/clean/fund_analytics.duckdb'
+DB_PATH = db.DB_PATH
 COLORS = {'subscriptions': '#16877c', 'redemptions': '#d26b45', 'net_flow': '#5773b7'}
 LABELS = {'subscriptions': 'Subscriptions', 'redemptions': 'Redemptions', 'net_flow': 'Net flow'}
 QUERY_VERSION = 'v1.0'
