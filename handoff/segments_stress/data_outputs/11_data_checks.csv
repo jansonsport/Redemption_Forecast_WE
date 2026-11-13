@@ -1,0 +1,10 @@
+check,result,detail,passed
+Status filter,"kept 901,088 of 901,088","{""Settled"": 901088}",True
+Duplicates,"0 duplicate IDs, 0 duplicate rows",exact duplicates removed,True
+Internal moves,8884 same-day equal-and-opposite amount groups,"No flow-type column; candidates reported, not removed (coincidental matches of small amounts are expected)",True
+Currencies,GBP,single currency,True
+Omnibus / nominee accounts,0 by type name; 0 top-1% holders with extreme trade counts,none hidden behind single IDs detected,True
+Trade vs cash date,"behaviour, segments, correlation and stress use trade date",cash-date totals reconciled separately; payment lag affects cash timing only,True
+Client flows = fund flows (trade date),max daily difference £0.00,22 transactions dated outside fund calendar (pre-launch trade dates settle inside it),True
+Client flows = fund flows (cash date),max daily difference £0.00,0 transactions dated outside fund calendar (pre-launch trade dates settle inside it),True
+Holdings = units × price,median unit error 0.00023; rebuilt fund AUM within 0.2469% of reported every day,units from balance-after-trade ÷ class price; unit changes match flow ÷ price,True

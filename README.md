@@ -18,6 +18,26 @@ venv/bin/python -m streamlit run app.py
 
 Open the local URL printed by Streamlit. Stop the dashboard before rebuilding the database. Import and forecast generation are explicit commands; page navigation does not retrain models or reread raw CSVs.
 
+## Data flow
+
+```text
+data/raw/*.csv ──ingest──▶ DuckDB database ──▶ forecast and backtest commands, segments ──▶ files under data/clean
+                                         └──▶ dashboard (app.py)
+```
+
+- `ingest` (`fund_analytics/db.py`) is the only code that reads the raw CSVs. It validates and reconciles
+  them and replaces the database tables in one transaction; an unchanged snapshot is a no-op. Each import
+  is recorded in `ingestion_runs`, and the latest import (last inserted row) gives the fingerprint that
+  every output carries.
+- Everything else reads the database through `fund_analytics/analytics.py`: the dashboard's queries, the
+  forecast histories and the segments study's source tables. Outputs (forecasts, monthly forecasts,
+  segments, benchmark) are still files under `data/clean`; pages refuse outputs built from another import.
+- The database is `data/clean/fund_analytics.duckdb` unless `FUND_ANALYTICS_DB` names another file, e.g.
+  `FUND_ANALYTICS_DB=/tmp/other.duckdb venv/bin/python -m fund_analytics ingest`. Set it the same way for
+  the build commands and `streamlit run app.py`. The tests use their own temporary database.
+- `ingest` needs the dashboard stopped: DuckDB lets one process write or several processes read, not
+  both. A lock clash is reported as "The database is not ready" (dashboard) or `DatabaseUnavailable`.
+
 ## Daily and monthly model comparison
 
 The default daily view compares the newer whole-fund Random Forest and Ridge winners. `history-window-backtest` generates their historical evaluation; `selected-forecast` refits the selected configurations at the latest observed cutoff. The first backtest can take several minutes.
@@ -29,6 +49,51 @@ Open **Forecasts → Monthly model comparison**, then choose **Daily next month*
 The monthly outlook starts after the latest complete month; daily models use the later observation cutoff. See [results and previous-model comparisons](docs/monthly_history_results.md) and the dashboard details below.
 
 Historical experiment commands remain available for reproducibility: `forecast`, then `daily-forest-backtest`, recreate the earlier daily baseline comparison. Their legacy dashboard view has been removed.
+
+## Segments & stress (client relationships)
+
+```sh
+venv/bin/python -m fund_analytics segments
+```
+
+Builds the **Segments & stress** page data in about 10 seconds: client segments
+(k-means), segment and sector flow correlation (heat maps in section 4),
+concentration and liquidity stress tests.
+It reads one snapshot of the database tables, writes the `11_*.csv` tables and `bundle.pkl` to
+`data/clean/segments`, and copies the study notebook to `static/segments` for the
+page's "Open full study notebook" link. Rebuild after every new import: the page
+refuses a bundle built from a different import (or when there is no import). Restart the dashboard
+after rebuilding.
+
+This is **descriptive analysis of relationships between clients, not a
+forecast**. It does not feed the Forecasts page. Segments are assigned using
+each client's full history (hindsight). Correlation is co-movement, not
+causation, and stress scenarios are illustrative exposures. There are no
+portfolio holdings, so cash buffers are illustrative. Segment and client
+holdings are reconstructed as units × price and checked against reported fund
+AUM; see the PRD correctness rules.
+
+The study is ported from `handoff/segments_stress/` (the original analysis,
+notebook and reference UI). Changes for this repository:
+
+- Inputs come from the database tables (`CONFIG['tables']`) instead of the CSVs, outputs go to
+  `data/clean/segments`, and the code is updated for pandas 3 (read-only arrays; `'YE'`/`'ME'` resample aliases).
+- **k is fixed at 7** (`CONFIG['k_fixed']`). On silhouette, 7 and 8 groups are
+  nearly tied, and the scikit-learn version decides which wins. The automatic
+  choice is still shown on the page and is 8 in this environment.
+- The main k-means fit uses **50 restarts** (`CONFIG['n_init']`, was 10). With
+  10, this scikit-learn version stopped at a worse k=7 solution. With 50, results
+  are stable (50 and 200 restarts agree), 98% of clients get the same segment as
+  in the original study, and all seven segment names match.
+- The browser stress engine is now Python (`fund_analytics/segments/engine.py`)
+  and matches the pipeline exactly for the default stress definition. A custom
+  stress definition lasts for the session; download it as JSON to keep it.
+
+Numbers that differ from the original study because of the clustering changes:
+mean daily segment correlation on stress days is 0.13 (study 0.12), and median
+bootstrap stability is 0.70 (study 0.72). Everything that does not depend on the
+clusters is identical, including stress days, rare traders, concentration and
+the reverse stress test.
 
 ## Validation and performance
 

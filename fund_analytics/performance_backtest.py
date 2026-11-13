@@ -13,11 +13,12 @@ import sklearn
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 
-from .forecast import ROOT, TARGETS, features, recency_weights, training_slice
-from .history_backtest import Configuration, split_months, summarize, evaluate
+from . import analytics, db
+from .forecast import TARGETS, features, recency_weights, training_slice
+from .history_backtest import OUTPUT as HISTORY_OUTPUT, Configuration, split_months, summarize, evaluate
 from .history_intervals import calibrate
 
-OUTPUT = ROOT / 'data/clean/performance_backtest'
+OUTPUT = db.CLEAN_DIR / 'performance_backtest'
 RETURN_WINDOWS = (5, 21, 63)
 CONFIGS = {
     'subscriptions': (Configuration('random_forest', 'expanding', depth=5, leaf=12),
@@ -166,13 +167,12 @@ def compute(history, prices, fingerprint):
 
 
 def run(output=OUTPUT):
-    from .db import connect
-    previous = ROOT/'data/clean/history_window_backtest'
+    previous = HISTORY_OUTPUT
     old_metadata = json.loads((previous/'metadata.json').read_text())
-    with connect() as con:
-        history = con.execute('SELECT date,sum(subscriptions) subscriptions,sum(redemptions) redemptions FROM daily_sector GROUP BY 1 ORDER BY 1').df()
-        price_frame = con.execute('SELECT date,accumulation_unit_price_gbp price FROM fund_daily ORDER BY date').df()
-        fingerprint = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()[0]
+    with db.connect() as con:
+        history = analytics.sector_history(con, by_sector=False)
+        price_frame = analytics.unit_prices(con)
+        fingerprint = db.require_import(con)['fingerprint']
     if old_metadata['source_fingerprint'] != fingerprint:
         raise ValueError('Previous results have a different source fingerprint')
     prices = pd.Series(price_frame.price.to_numpy(dtype=float), index=pd.DatetimeIndex(price_frame.date))

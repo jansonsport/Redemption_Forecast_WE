@@ -13,9 +13,10 @@ import numpy as np
 import pandas as pd
 import sklearn
 
-from .forecast import ROOT, TARGETS, Spec, predict, predict_forest, training_slice
+from . import analytics, db
+from .forecast import TARGETS, Spec, predict, predict_forest, training_slice
 
-OUTPUT = ROOT / 'data/clean/history_window_backtest'
+OUTPUT = db.CLEAN_DIR / 'history_window_backtest'
 APPROACHES = ('rolling', 'expanding', 'weighted')
 
 
@@ -184,10 +185,9 @@ def compute(history, fingerprint):
 
 
 def run(output=OUTPUT):
-    from .db import connect
-    with connect() as con:
-        history = con.execute('SELECT date, sum(subscriptions) subscriptions, sum(redemptions) redemptions FROM daily_sector GROUP BY 1 ORDER BY 1').df()
-        fingerprint = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()[0]
+    with db.connect() as con:
+        history = analytics.sector_history(con, by_sector=False)
+        fingerprint = db.require_import(con)['fingerprint']
     result = compute(history, fingerprint)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)

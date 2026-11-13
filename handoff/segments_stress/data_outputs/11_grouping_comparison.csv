@@ -1,0 +1,37 @@
+feature,grouping,groups,eta_squared
+log_holding,Behavioural segments (formed 2006–2016),7,0.2573425182123762
+log_trades_per_year,Behavioural segments (formed 2006–2016),7,0.68313448422712
+redemption_share,Behavioural segments (formed 2006–2016),7,0.02033245226853808
+log_trade_rel,Behavioural segments (formed 2006–2016),7,0.4001433367232191
+log_largest_red_rel,Behavioural segments (formed 2006–2016),7,0.20542637592139712
+log_stress_lift,Behavioural segments (formed 2006–2016),7,0.023139193033654193
+red_march_share,Behavioural segments (formed 2006–2016),7,0.268086092631891
+red_december_share,Behavioural segments (formed 2006–2016),7,0.38819744714419535
+month_end_trade_share,Behavioural segments (formed 2006–2016),7,0.5410136088576474
+log_holding,Sector,11,0.07890753522928551
+log_trades_per_year,Sector,11,0.15429066947440662
+redemption_share,Sector,11,0.0254820497065128
+log_trade_rel,Sector,11,0.2545540501132525
+log_largest_red_rel,Sector,11,0.1053375182446481
+log_stress_lift,Sector,11,0.0500946356734745
+red_march_share,Sector,11,0.5673963664074246
+red_december_share,Sector,11,0.6802751412650487
+month_end_trade_share,Sector,11,0.14785657975946975
+log_holding,Client type,34,0.09279133050310784
+log_trades_per_year,Client type,34,0.1578099462093171
+redemption_share,Client type,34,0.05789095906439223
+log_trade_rel,Client type,34,0.2949820417510909
+log_largest_red_rel,Client type,34,0.1276919470712018
+log_stress_lift,Client type,34,0.05348622489920074
+red_march_share,Client type,34,0.5708491027488443
+red_december_share,Client type,34,0.6811164863718135
+month_end_trade_share,Client type,34,0.15097651323653283
+log_holding,Region,12,0.0008345965573102188
+log_trades_per_year,Region,12,0.0016083738682122206
+redemption_share,Region,12,0.0017587452725085218
+log_trade_rel,Region,12,0.0016971864940278358
+log_largest_red_rel,Region,12,0.0020771552022356143
+log_stress_lift,Region,12,0.0017216358784216679
+red_march_share,Region,12,0.0014139361328647793
+red_december_share,Region,12,0.0013961714060340968
+month_end_trade_share,Region,12,0.001195699820155216

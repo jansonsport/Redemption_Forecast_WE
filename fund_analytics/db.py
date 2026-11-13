@@ -1,14 +1,20 @@
-"""Typed, atomic import of the supplied single-fund snapshot."""
+"""The analytics database: location, connections, import history and the typed, atomic import.
+
+`ingest` is the only code that reads the raw CSVs; everything else reads the database.
+"""
+from contextlib import contextmanager
 from pathlib import Path
 import csv
 import hashlib
 import json
+import os
 import time
 import uuid
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / 'data/clean/fund_analytics.duckdb'
+CLEAN_DIR = ROOT / 'data/clean'
+DB_PATH = Path(os.environ.get('FUND_ANALYTICS_DB') or CLEAN_DIR / 'fund_analytics.duckdb')
 RAW_DIR = ROOT / 'data/raw'
 SCHEMA_VERSION = '1'
 FILES = {'clients': 'synthetic_clients.csv', 'client_flows': 'synthetic_client_flows.csv', 'income_distributions': 'synthetic_income_distributions.csv', 'fund_daily': 'synthetic_fund_daily.csv'}
@@ -19,8 +25,57 @@ EXPECTED = {
 'income_distributions': 'distribution_id,ex_distribution_date,payment_date,client_id,distribution_gbp,payment_status',
 'fund_daily': 'date,opening_aum_gbp,subscriptions_trade_date_gbp,redemptions_trade_date_gbp,net_flow_trade_date_gbp,investment_value_change_gbp,income_distributions_declared_gbp,closing_aum_gbp,active_client_count,transaction_count,income_unit_price_gbp,accumulation_unit_price_gbp,subscriptions_cash_date_gbp,redemptions_cash_date_gbp,net_client_flow_cash_date_gbp,income_distributions_paid_gbp,net_investor_cash_flow_gbp,redemptions_awaiting_payment_gbp,income_distributions_payable_gbp'}
 
-def connect(read_only=True, path=DB_PATH):
-    return duckdb.connect(str(path), read_only=read_only)
+class DatabaseUnavailable(RuntimeError):
+    """The database file is missing, locked by another process or unreadable."""
+
+
+def connect(read_only=True, path=None):
+    """Open the database (default `DB_PATH`, looked up at call time)."""
+    path = Path(path or DB_PATH)
+    try:
+        return duckdb.connect(str(path), read_only=read_only)
+    except duckdb.IOException as exc:
+        raise DatabaseUnavailable(f'Cannot open the analytics database {path}: {exc}. If the dashboard or another '
+                                  'process is using it, stop it and retry; if it does not exist yet, run '
+                                  '`venv/bin/python -m fund_analytics ingest`.') from exc
+
+
+@contextmanager
+def using(con=None):
+    """Yield `con`, or a read-only connection that is closed afterwards."""
+    if con is not None:
+        yield con
+        return
+    with connect() as own:
+        yield own
+
+
+def import_runs(con=None):
+    """All imports in insertion order, as dicts with their JSON fields parsed."""
+    with using(con) as c:
+        if not c.execute("SELECT 1 FROM information_schema.tables WHERE table_name='ingestion_runs'").fetchone():
+            return []
+        runs = c.execute('SELECT * FROM ingestion_runs ORDER BY rowid').df().to_dict('records')
+    for run in runs:
+        for key in ('source_hashes', 'row_counts', 'validation'):
+            run[key] = json.loads(run[key])
+    return runs
+
+
+def latest_import(con=None):
+    """The most recently inserted import, or None."""
+    runs = import_runs(con)
+    return runs[-1] if runs else None
+
+
+def require_import(con=None):
+    """The latest import; raises when there is no database or no import yet."""
+    if con is None and not DB_PATH.exists():
+        raise DatabaseUnavailable(f'No analytics database at {DB_PATH}. Run `venv/bin/python -m fund_analytics ingest`.')
+    run = latest_import(con)
+    if run is None:
+        raise LookupError('The analytics database has no import yet. Run `venv/bin/python -m fund_analytics ingest`.')
+    return run
 
 def _type(column):
     if column in ('income_unit_price_gbp', 'accumulation_unit_price_gbp'):
@@ -38,10 +93,10 @@ def _require(con, sql, label):
     if rows:
         raise ValueError(f'{label}; example records: {rows}')
 
-def ingest(raw_dir=RAW_DIR, path=DB_PATH):
-    """Import one snapshot transactionally; unchanged content is a no-op."""
+def ingest(raw_dir=RAW_DIR, path=None):
+    """Import one snapshot transactionally; unchanged content is a no-op. Needs the dashboard stopped."""
     started = time.perf_counter()
-    raw_dir, path = Path(raw_dir), Path(path)
+    raw_dir, path = Path(raw_dir), Path(path or DB_PATH)
     hashes = {}
     for table, filename in FILES.items():
         source = raw_dir / filename
@@ -56,8 +111,8 @@ def ingest(raw_dir=RAW_DIR, path=DB_PATH):
     con = connect(False, path)
     try:
         con.execute('CREATE TABLE IF NOT EXISTS ingestion_runs (run_id VARCHAR PRIMARY KEY, fingerprint VARCHAR, imported_at TIMESTAMP, schema_version VARCHAR, source_hashes JSON, row_counts JSON, validation JSON, coverage_start DATE, coverage_end DATE, duration_seconds DOUBLE)')
-        previous = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()
-        if previous and previous[0] == fingerprint:
+        previous = latest_import(con)
+        if previous and previous['fingerprint'] == fingerprint:
             return {'status': 'unchanged', 'fingerprint': fingerprint}
         con.execute('BEGIN TRANSACTION')
         counts = {}

@@ -8,10 +8,12 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from .forecast import ROOT, TARGETS, Spec, predict, predict_forest, training_slice
+from . import analytics, db
+from .forecast import TARGETS, Spec, predict, predict_forest, training_slice
+from .history_backtest import OUTPUT as HISTORY_OUTPUT
 from .history_intervals import make_ranges
 
-OUTPUT = ROOT / 'data/clean/selected_forecasts'
+OUTPUT = db.CLEAN_DIR / 'selected_forecasts'
 VERSION = 'selected-history-v2'
 FAMILIES = ('random_forest', 'ridge')
 
@@ -137,12 +139,11 @@ def compute(history, models, backtest, source_metadata, selection_metrics):
 
 
 def run(output=OUTPUT):
-    from .db import connect
-    source = ROOT / 'data/clean/history_window_backtest'
+    source = HISTORY_OUTPUT
     metadata = json.loads((source/'metadata.json').read_text())
-    with connect() as con:
-        fingerprint = con.execute('SELECT fingerprint FROM ingestion_runs ORDER BY imported_at DESC LIMIT 1').fetchone()[0]
-        history = con.execute('SELECT date,sum(subscriptions) subscriptions,sum(redemptions) redemptions FROM daily_sector GROUP BY 1 ORDER BY 1').df()
+    with db.connect() as con:
+        fingerprint = db.require_import(con)['fingerprint']
+        history = analytics.sector_history(con, by_sector=False)
     if metadata['source_fingerprint'] != fingerprint:
         raise ValueError('Backtest source differs from the current import')
     result = compute(history, pd.read_csv(source/'models.csv'),

@@ -17,8 +17,9 @@ import pandas as pd
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / 'data' / 'clean' / 'forecasts'
+from . import analytics, db
+
+OUTPUT = db.CLEAN_DIR / 'forecasts'
 VERSION = '1'
 TARGETS = ('subscriptions', 'redemptions')
 
@@ -120,11 +121,9 @@ def predict_forest(series, dates, cutoff, window, depth, leaf, half_life_years=N
     return np.maximum(model.predict(features(dates,origin,mean,std)),0.)
 
 
-def run_daily_forest_backtest(output=ROOT/'data/clean/daily_forest_backtest'):
+def run_daily_forest_backtest(output=db.CLEAN_DIR/'daily_forest_backtest'):
     """Compare daily fund RF forecasts with existing methods on identical cutoffs."""
-    from .db import connect
-    with connect() as con:
-        frame=con.execute('SELECT date,sum(subscriptions) subscriptions,sum(redemptions) redemptions FROM daily_sector GROUP BY 1 ORDER BY 1').df()
+    frame=analytics.sector_history(by_sector=False)
     saved_models=pd.read_csv(OUTPUT/'models.csv')
     frame['date']=pd.to_datetime(frame.date)
     start,end=frame.date.min(),frame.date.max()
@@ -361,12 +360,9 @@ def compute(history, fingerprint):
 
 
 def run_forecasts(output=OUTPUT):
-    from .db import connect
-    with connect(read_only=True) as con:
-        history = con.execute('SELECT date, client_sector, subscriptions, redemptions FROM daily_sector ORDER BY date, client_sector').df()
-        columns = [r[1] for r in con.execute("PRAGMA table_info('ingestion_runs')").fetchall()]
-        fingerprint_col = 'source_fingerprint' if 'source_fingerprint' in columns else 'fingerprint'
-        fingerprint = con.execute(f'SELECT {fingerprint_col} FROM ingestion_runs ORDER BY rowid DESC LIMIT 1').fetchone()[0]
+    with db.connect() as con:
+        history = analytics.sector_history(con)
+        fingerprint = db.require_import(con)['fingerprint']
     result = compute(history, fingerprint)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -484,9 +480,7 @@ def multi_horizon_backtest(history, max_horizon=12, step_months=6):
 
 def run_multi_horizon_backtest(output=OUTPUT):
     """Create separate, reproducible multi-horizon backtest artifacts."""
-    from .db import connect
-    with connect(read_only=True) as con:
-        history=con.execute('SELECT date,client_sector,subscriptions,redemptions FROM daily_sector ORDER BY date,client_sector').df()
+    history=analytics.sector_history()
     detail, summary=multi_horizon_backtest(history)
     output=Path(output); output.mkdir(parents=True,exist_ok=True)
     detail.to_csv(output/'horizon_backtest_detail.csv',index=False)

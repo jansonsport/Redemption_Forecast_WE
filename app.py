@@ -3,22 +3,21 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
-from pathlib import Path
 from time import perf_counter
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from fund_analytics import db
+from fund_analytics import analytics, benchmark, db
 
-ROOT = Path(__file__).resolve().parent
-DB_PATH = ROOT / 'data/clean/fund_analytics.duckdb'
+DB_PATH = db.DB_PATH
 COLORS = {'subscriptions': '#16877c', 'redemptions': '#d26b45', 'net_flow': '#5773b7'}
 LABELS = {'subscriptions': 'Subscriptions', 'redemptions': 'Redemptions', 'net_flow': 'Net flow'}
-QUERY_VERSION = 'v1.0'
+# analytics functions the dashboard may cache; each takes only plain keyword arguments.
+CACHED = {'distinct_values', 'client_list', 'daily_flows', 'group_summary', 'client_concentration', 'active_clients',
+          'correlations', 'fund_aum', 'scheduled_distributions', 'table_counts'}
 
 st.set_page_config(page_title='Fund Flow | Analytics', page_icon='◈', layout='wide')
 st.markdown('''<style>
@@ -55,11 +54,24 @@ def money(value):
     return f'{sign}£{value:,.0f}'
 
 
+def not_ready(exc):
+    st.error(f'The database is not ready: {exc}')
+    st.stop()
+
+
 @st.cache_data(show_spinner=False, max_entries=160)
-def query(fingerprint, version, sql, params=()):
-    """Only cache selected results; source identity and SQL are part of the key."""
-    with db.connect() as connection:
-        return connection.execute(sql, list(params)).fetchdf()
+def cached(identity, fn_name, kwargs, version):
+    """One analytics call; database identity, query version, function and arguments form the key."""
+    if fn_name not in CACHED:
+        raise ValueError(f'{fn_name} is not a cacheable analytics query')
+    return getattr(analytics, fn_name)(**kwargs)
+
+
+def fetch(fn_name, **kwargs):
+    try:
+        return cached(identity, fn_name, kwargs, analytics.QUERY_VERSION)
+    except db.DatabaseUnavailable as exc:
+        not_ready(exc)
 
 
 def table_export(frame, name):
@@ -68,11 +80,11 @@ def table_export(frame, name):
                        f'{name}.csv', 'text/csv', key=f'download_{name}')
 
 
-def chart(fig):
+def chart(fig, hovermode='x unified'):
     fig.update_layout(template='plotly_white', paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=10, t=25, b=0),
                       legend_title_text='', font=dict(family='Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-                      color='#263746', size=14), hovermode='x unified')
+                      color='#263746', size=14), hovermode=hovermode)
     fig.update_xaxes(title_font=dict(color='#263746', size=14),
                      tickfont=dict(color='#425767', size=12),
                      gridcolor='#d6dee5', zerolinecolor='#aab7c2')
@@ -90,7 +102,7 @@ def lines(frame, x='date', columns=('subscriptions', 'redemptions'), title=None)
 
 @st.cache_data(show_spinner=False, max_entries=2)
 def monthly_artifacts(artifact_identity):
-    path = ROOT / 'data/clean/monthly_forecasts'
+    path = db.CLEAN_DIR / 'monthly_forecasts'
     meta = json.loads((path/'metadata.json').read_text())
     if meta.get('version') != 'monthly-history-v2':
         raise ValueError('Regenerate monthly forecasts for the current comparison format.')
@@ -104,7 +116,7 @@ def monthly_artifacts(artifact_identity):
 
 @st.cache_data(show_spinner=False, max_entries=2)
 def selected_artifacts(artifact_identity):
-    path = ROOT / 'data/clean/selected_forecasts'
+    path = db.CLEAN_DIR / 'selected_forecasts'
     meta = json.loads((path/'metadata.json').read_text())
     if meta.get('version') != 'selected-history-v2':
         raise ValueError('Regenerate daily forecasts for the current comparison format.')
@@ -122,7 +134,7 @@ def artifact_stamp(path):
 
 def daily_comparison_view(source_fingerprint, observation_cutoff):
     try:
-        data = selected_artifacts(artifact_stamp(ROOT / 'data/clean/selected_forecasts'))
+        data = selected_artifacts(artifact_stamp(db.CLEAN_DIR / 'selected_forecasts'))
     except (FileNotFoundError, OSError, ValueError, KeyError):
         st.info('Generate the newer daily model comparison before opening this view.')
         st.code('venv/bin/python -m fund_analytics selected-forecast', language='bash')
@@ -198,7 +210,7 @@ def monthly_view(source_fingerprint, sectors, observation_cutoff):
         return
     st.caption('Monthly cash-flow paths · models selected by cumulative-total error · retrospective research')
     try:
-        data = monthly_artifacts(artifact_stamp(ROOT / 'data/clean/monthly_forecasts'))
+        data = monthly_artifacts(artifact_stamp(db.CLEAN_DIR / 'monthly_forecasts'))
     except (FileNotFoundError, OSError, ValueError, KeyError):
         st.info('Generate the updated monthly comparison before opening this view.')
         st.code('venv/bin/python -m fund_analytics monthly-forecast', language='bash')
@@ -314,33 +326,22 @@ if not DB_PATH.exists():
 
 try:
     with db.connect() as connection:
-        manifest = connection.execute('SELECT * FROM ingestion_runs ORDER BY imported_at').fetchdf()
-        coverage = connection.execute('SELECT min(date), max(date) FROM fund_daily').fetchone()
+        runs = db.import_runs(connection)
+        minimum, maximum = analytics.coverage(connection)
 except Exception as exc:
-    st.error(f'The database is not ready: {exc}')
-    st.stop()
+    not_ready(exc)
+fingerprint = runs[-1]['fingerprint'] if runs else None
 
 # Source hashes are also exposed below; the file identity protects against database rebuilds.
-identity = f'{DB_PATH.stat().st_mtime_ns}:{DB_PATH.stat().st_size}'
-if not manifest.empty:
-    for field in ('source_fingerprint', 'fingerprint'):
-        if field in manifest.columns:
-            identity += ':' + str(manifest.iloc[-1][field])
-            break
+identity = f'{DB_PATH.stat().st_mtime_ns}:{DB_PATH.stat().st_size}' + (f':{fingerprint}' if fingerprint else '')
 
-
-def q(sql, params=()):
-    return query(identity, QUERY_VERSION, sql, tuple(params))
-
-
-minimum, maximum = coverage
 st.sidebar.markdown('### ◈ Fund Flow')
 st.sidebar.caption('RESEARCH WORKBENCH · V1')
-page = st.sidebar.radio('Workspace', ['Overview', 'Timing patterns', 'Client behaviour', 'Forecasts', 'Data quality'])
+page = st.sidebar.radio('Workspace', ['Overview', 'Timing patterns', 'Client behaviour', 'Forecasts', 'Data quality', 'Segments & stress'])
 st.sidebar.divider()
-sectors = q('SELECT DISTINCT client_sector FROM clients ORDER BY 1').iloc[:, 0].tolist()
+sectors = fetch('distinct_values', column='client_sector')
 
-if page not in ('Forecasts', 'Data quality'):
+if page not in ('Forecasts', 'Data quality', 'Segments & stress'):
     default_start = max(minimum, maximum - timedelta(days=365 * 3))
     selected_dates = st.sidebar.date_input('Analysis period', (default_start, maximum),
                                           min_value=minimum, max_value=maximum)
@@ -349,29 +350,17 @@ if page not in ('Forecasts', 'Data quality'):
         st.stop()
     start, end = selected_dates
     selected_sectors = st.sidebar.multiselect('Sectors · all when empty', sectors)
-    type_sql = 'SELECT DISTINCT client_type FROM clients'
-    type_params = []
-    if selected_sectors:
-        type_sql += ' WHERE client_sector IN (' + ','.join('?' for _ in selected_sectors) + ')'
-        type_params = selected_sectors
-    types = q(type_sql + ' ORDER BY 1', type_params).iloc[:, 0].tolist()
+    types = fetch('distinct_values', column='client_type', sectors=selected_sectors or None)
     selected_types = st.sidebar.multiselect('Client types · all when empty', types)
-    client_predicates, client_params = [], []
-    for column, values in [('client_sector', selected_sectors), ('client_type', selected_types)]:
-        if values:
-            client_predicates.append(column + ' IN (' + ','.join('?' for _ in values) + ')')
-            client_params.extend(values)
-    client_where = ' AND '.join(client_predicates) or 'TRUE'
-    clients = q(f'SELECT client_id, client_name, client_sector FROM clients WHERE {client_where} ORDER BY client_name', client_params)
+    clients = fetch('client_list', sectors=selected_sectors or None, client_types=selected_types or None)
     names = dict(zip(clients.client_id, clients.client_name + ' · ' + clients.client_id))
     selected_clients = st.sidebar.multiselect('Clients · all when empty', clients.client_id.tolist(),
                                               format_func=lambda key: names.get(key, key))
-    if selected_clients:
-        client_predicates.append('client_id IN (' + ','.join('?' for _ in selected_clients) + ')')
-        client_params.extend(selected_clients)
-    client_where = ' AND '.join(client_predicates) or 'TRUE'
+    # Empty selections mean all; analytics treats None as all and [] as nothing.
+    filters = dict(start=start, end=end, sectors=selected_sectors or None, client_types=selected_types or None,
+                   client_ids=selected_clients or None)
     basis = st.sidebar.radio('Date basis', ['Cash movement', 'Trade decision'])
-    date_column = 'cash_flow_date' if basis == 'Cash movement' else 'trade_date'
+    basis_key = 'cash' if basis == 'Cash movement' else 'trade'
     filter_caption = f'{start:%d %b %Y} – {end:%d %b %Y} · {basis} · ' + (', '.join(selected_sectors) if selected_sectors else 'All sectors')
     if selected_types:
         filter_caption += f' · {len(selected_types)} client types'
@@ -388,32 +377,11 @@ st.caption(filter_caption)
 
 
 def daily_data():
-    # Aggregate events in SQL before joining a small calendar spine.
-    return q(f'''WITH selected AS (SELECT * FROM clients WHERE {client_where}),
-        events AS (
-          SELECT f.{date_column} AS date,
-            sum(greatest(flow_gbp, 0)) AS subscriptions,
-            sum(greatest(-flow_gbp, 0)) AS redemptions,
-            count(*) AS transaction_count
-          FROM client_flows f JOIN selected c USING(client_id)
-          WHERE f.{date_column} BETWEEN ? AND ? GROUP BY 1),
-        days AS (SELECT CAST(day AS DATE) AS date FROM generate_series(CAST(? AS DATE), CAST(? AS DATE), INTERVAL 1 DAY) t(day))
-        SELECT d.date, coalesce(e.subscriptions, 0) AS subscriptions,
-          coalesce(e.redemptions, 0) AS redemptions,
-          coalesce(e.subscriptions, 0)-coalesce(e.redemptions, 0) AS net_flow,
-          coalesce(e.transaction_count, 0) AS transaction_count
-        FROM days d LEFT JOIN events e USING(date) ORDER BY date''', client_params + [start, end, start, end])
+    return fetch('daily_flows', **filters, basis=basis_key)
 
 
 def sector_summary(group='client_sector'):
-    if group not in ('client_sector', 'client_type'):
-        raise ValueError('Unsupported group')
-    return q(f'''SELECT c.{group}, sum(greatest(flow_gbp,0)) AS subscriptions,
-        sum(greatest(-flow_gbp,0)) AS redemptions, sum(flow_gbp) AS net_flow,
-        count(*) AS transaction_count, count(DISTINCT f.client_id) AS transacting_clients,
-        avg(abs(flow_gbp)) AS average_transaction_gbp
-        FROM client_flows f JOIN (SELECT * FROM clients WHERE {client_where}) c USING(client_id)
-        WHERE f.{date_column} BETWEEN ? AND ? GROUP BY 1 ORDER BY redemptions DESC''', client_params + [start, end])
+    return fetch('group_summary', group={'client_sector': 'sector', 'client_type': 'type'}[group], **filters, basis=basis_key)
 
 
 if page == 'Overview':
@@ -443,7 +411,7 @@ if page == 'Overview':
     with right:
         st.subheader('Fund value')
         st.caption('Whole-fund AUM. Sector and client filters do not apply.')
-        aum = q('SELECT date, closing_aum_gbp FROM fund_daily WHERE date BETWEEN ? AND ? ORDER BY date', [start, end])
+        aum = fetch('fund_aum', start=start, end=end)
         if not aum.empty:
             st.metric('Closing AUM · latest selected date', money(aum.iloc[-1].closing_aum_gbp))
             chart(px.line(aum, x='date', y='closing_aum_gbp', labels={'closing_aum_gbp': 'GBP'}, color_discrete_sequence=['#5773b7']))
@@ -454,30 +422,9 @@ elif page == 'Timing patterns':
     st.write('Compare calendar patterns using all observed days, including days with no flows.')
     daily = daily_data()
     # Account exposure is counted on each date, respecting historical opening and closure.
-    exposure = q(f'''WITH selected AS (SELECT account_open_date, account_close_date FROM clients WHERE {client_where}),
-        days AS (SELECT CAST(day AS DATE) AS date FROM generate_series(CAST(? AS DATE), CAST(? AS DATE), INTERVAL 1 DAY) t(day))
-        SELECT d.date, count(c.account_open_date) AS active_clients FROM days d LEFT JOIN selected c
-        ON c.account_open_date <= d.date AND (c.account_close_date IS NULL OR c.account_close_date >= d.date)
-        GROUP BY 1 ORDER BY 1''', client_params + [start, end])
-    daily = daily.merge(exposure, on='date', how='left')
+    exposure = fetch('active_clients', **filters)
     pattern = st.radio('Calendar view', ['Weekday', 'Position in month', 'Month of year'], horizontal=True)
-    if pattern == 'Weekday':
-        daily['period'] = daily.date.dt.day_name()
-        ordering = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    elif pattern == 'Position in month':
-        daily['period'] = pd.cut(daily.date.dt.day, [0, 7, 14, 21, 31], labels=['1–7', '8–14', '15–21', '22–end'])
-        ordering = ['1–7', '8–14', '15–21', '22–end']
-    else:
-        daily['period'] = daily.date.dt.month_name()
-        ordering = pd.date_range('2024-01-01', periods=12, freq='MS').month_name().tolist()
-    summary = daily.groupby('period', observed=True).agg(
-        subscriptions=('subscriptions', 'sum'), redemptions=('redemptions', 'sum'),
-        observations=('date', 'size'), transaction_count=('transaction_count', 'sum'),
-        client_days=('active_clients', 'sum')).reindex(ordering).dropna(subset=['observations']).reset_index()
-    summary['subscriptions_per_day'] = summary.subscriptions / summary.observations
-    summary['redemptions_per_day'] = summary.redemptions / summary.observations
-    summary['transactions_per_1000_client_days'] = summary.transaction_count / summary.client_days.replace(0, np.nan) * 1000
-    summary['average_transaction_gbp'] = (summary.subscriptions + summary.redemptions) / summary.transaction_count.replace(0, np.nan)
+    summary = analytics.timing_summary(daily, exposure, {'Weekday': 'weekday', 'Position in month': 'month_position', 'Month of year': 'month'}[pattern])
     chart(px.bar(summary, x='period', y=['subscriptions_per_day', 'redemptions_per_day'], barmode='group',
                  color_discrete_sequence=list(COLORS.values()), labels={'period': '', 'value': 'Average GBP per observed day'}))
     a, b = st.columns(2)
@@ -498,10 +445,7 @@ elif page == 'Client behaviour':
         chart(px.bar(summary, y=group_col, x='net_flow', orientation='h', labels={group_col: '', 'net_flow': 'Net flow · GBP'}, color_discrete_sequence=['#16877c']))
         with st.expander('Group frequency and transaction size'):
             table_export(summary, 'client_groups')
-    concentration = q(f'''SELECT f.client_id,c.client_name, count(*) AS transactions,
-        sum(abs(flow_gbp)) AS gross_flow_gbp, avg(abs(flow_gbp)) AS average_transaction_gbp
-        FROM client_flows f JOIN (SELECT * FROM clients WHERE {client_where}) c USING(client_id)
-        WHERE f.{date_column} BETWEEN ? AND ? GROUP BY 1,2 ORDER BY gross_flow_gbp DESC''', client_params + [start, end])
+    concentration = fetch('client_concentration', **filters, basis=basis_key)
     if not concentration.empty:
         gross = concentration.gross_flow_gbp.sum()
         c1, c2, c3 = st.columns(3)
@@ -519,25 +463,11 @@ elif page == 'Client behaviour':
     if picks:
         unit = 'month' if frequency == 'Monthly' else 'week'
         threshold = 12 if unit == 'month' else 26
-        amount = {'subscriptions': 'greatest(flow_gbp,0)', 'redemptions': 'greatest(-flow_gbp,0)', 'net_flow': 'flow_gbp'}[target]
-        marks = ','.join('?' for _ in picks)
-        histories = q(f'''WITH selected AS (SELECT * FROM clients WHERE client_id IN ({marks})),
-            periods AS (SELECT CAST(p AS DATE) AS period FROM generate_series(date_trunc('{unit}',CAST(? AS DATE)),date_trunc('{unit}',CAST(? AS DATE)),INTERVAL 1 {unit}) t(p)),
-            flows AS (SELECT client_id, date_trunc('{unit}',{date_column}) AS period, sum({amount}) AS amount
-              FROM client_flows WHERE client_id IN ({marks}) AND {date_column} BETWEEN ? AND ? GROUP BY 1,2)
-            SELECT p.period,c.client_id,coalesce(f.amount,0) AS amount FROM periods p CROSS JOIN selected c
-            LEFT JOIN flows f ON f.client_id=c.client_id AND f.period=p.period
-            WHERE c.account_open_date <= least(CAST(? AS DATE),p.period+INTERVAL 1 {unit}-INTERVAL 1 DAY)
-              AND coalesce(c.account_close_date,CAST(? AS DATE)) >= greatest(CAST(? AS DATE),p.period)
-            ORDER BY 1,2''', picks + [start, end] + picks + [start, end, end, end, start])
+        correlation, overlap, histories = fetch('correlations', client_ids=picks, unit=unit, target=target, start=start, end=end, basis=basis_key)
         if histories.empty:
             st.info('The selected clients have no open-account periods in this date range.')
         else:
             chart(px.line(histories, x='period', y='amount', color='client_id', labels={'period': '', 'amount': f'{LABELS[target]} · GBP'}))
-            matrix = histories.pivot(index='period', columns='client_id', values='amount')
-            correlation = matrix.corr(min_periods=threshold)
-            present = matrix.notna().astype(int)
-            overlap = present.T @ present
             if len(picks) < 2:
                 st.info('Choose another client to display pairwise correlations.')
             elif correlation.notna().sum().sum() == 0:
@@ -552,14 +482,16 @@ elif page == 'Client behaviour':
                 st.dataframe(overlap)
             table_export(histories, 'client_histories')
 
+elif page == 'Segments & stress':
+    from segments_page import render as render_segments
+    render_segments(chart, money, table_export, current_fingerprint=fingerprint)
+
 elif page == 'Forecasts':
-    monthly_view(str(manifest.iloc[-1]['fingerprint']), sectors, maximum)
+    monthly_view(fingerprint, sectors, maximum)
     with st.expander('Scheduled income distributions · whole fund'):
         st.caption('Declared payments are separate obligations and are excluded from predicted client redemptions. '
                    'Historical schedule availability is unknown; these schedules are not used in backtests.')
-        upcoming = q('''SELECT payment_date, payment_status, sum(distribution_gbp) AS scheduled_distribution_gbp
-            FROM income_distributions WHERE payment_status = 'Declared' AND payment_date > ?
-            GROUP BY 1,2 ORDER BY 1''', [maximum])
+        upcoming = fetch('scheduled_distributions', after=maximum)
         if upcoming.empty:
             st.info('No declared future income payments for the fund.')
         else:
@@ -567,29 +499,26 @@ elif page == 'Forecasts':
 
 else:
     st.write('Trace the dashboard back to its source files and inspect import validation.')
-    counts = q("SELECT 'Clients' AS dataset,count(*) AS rows FROM clients UNION ALL SELECT 'Client flows',count(*) FROM client_flows UNION ALL SELECT 'Income distributions',count(*) FROM income_distributions UNION ALL SELECT 'Daily fund',count(*) FROM fund_daily")
+    counts = fetch('table_counts')
     for col, row in zip(st.columns(4), counts.itertuples()):
         col.metric(row.dataset, f'{row.rows:,}')
     st.caption(f'Database size: {DB_PATH.stat().st_size / 1024**2:,.1f} MiB · Fund observation window: {minimum} to {maximum}')
     st.subheader('Import provenance and validation')
-    for row in manifest.to_dict('records'):
-        for key, value in row.items():
-            if isinstance(value, str) and value[:1] in ('{', '['):
-                try:
-                    row[key] = json.loads(value)
-                except ValueError:
-                    pass
+    for row in runs:
         st.json(row, expanded=False)
     st.subheader('Query performance')
-    report = ROOT / 'data/clean/benchmark.json'
+    report = db.CLEAN_DIR / 'benchmark.json'
     if report.exists():
         st.json(json.loads(report.read_text()))
     else:
         st.caption('No saved benchmark report yet. This check measures a fresh database connection and an uncached sector aggregate query.')
     if st.button('Measure an uncached query'):
         tick = perf_counter()
-        with db.connect() as connection:
-            connection.execute('SELECT client_sector,sum(subscriptions),sum(redemptions) FROM daily_sector GROUP BY 1').fetchall()
+        try:
+            with db.connect() as connection:
+                connection.execute(benchmark.QUERIES['sector_totals']).fetchall()
+        except db.DatabaseUnavailable as exc:
+            not_ready(exc)
         elapsed = perf_counter() - tick
         st.metric('Uncached query including connection', f'{elapsed * 1000:,.1f} ms')
         st.caption('A single observation, not a full median/p95 benchmark. Target: common aggregate queries below one second.')

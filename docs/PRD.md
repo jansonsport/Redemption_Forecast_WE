@@ -1,7 +1,7 @@
 # Fund Flow Analytics and Forecasting
 
-Status: V1 and experimental monthly random forest extension implemented; model adoption subject to retrospective evaluation review  
-Date: 9 November 2026
+Status: V1 and experimental monthly random forest extension implemented; model adoption subject to retrospective evaluation review. Segments & stress page specified (10 November 2026), not yet implemented.  
+Date: 9 November 2026 · amended 10 November 2026
 
 ## 1. Purpose and success criteria
 
@@ -16,10 +16,13 @@ Success means:
 - Separate subscription and redemption forecasts are available for every sector and the whole fund, with historical evaluation and uncertainty information.
 - Sector forecasts sum exactly to the displayed fund forecast before presentation rounding.
 - Query performance is measured and documented on the development machine.
+- The fund manager can see potential relationships between clients (behavioural segments, whether segments withdraw at the same time, concentration and liquidity exposure) on a Segments & stress page that looks and behaves like the rest of the dashboard.
 
 ## 2. Scope and source data
 
 V1 uses only the four supplied files in `data/raw`. It includes a local dashboard, reusable SQL analysis, baseline forecasts, and historical forecast evaluation. The next extension adds constrained random forest experiments and monthly forecasts up to twelve months ahead, subject to backtest review. Arbitrary uploads, live feeds, authentication, shared hosting, client-level predictions and trading decisions remain outside scope. Logistic regression is deferred to a potential client transaction-probability feature.
+
+A separate client-relationship study (client segmentation, segment flow correlation, concentration and liquidity stress tests; see section 4, *Segments & stress page*) is in scope as descriptive analysis. It is not a forecasting method, does not feed the forecasts and does not change their scope.
 
 The source brief is `docs/Gmail - Charity Fund Forecasting:Correlation.pdf`.
 
@@ -55,11 +58,11 @@ Data flow: immutable raw CSVs → typed staging and validation → canonical tab
 
 Reconcile daily subscription/redemption amounts and counts on both date bases, and declared/paid distributions, against the daily fund file over shared coverage. Sum money with exact arithmetic.
 
-Populate zero-flow periods only within each client's account lifetime and the dataset coverage. Historical client denominators must reflect accounts open in that period. Do not infer historical daily holdings from current snapshots or sporadic after-trade holdings. Client sector/type are treated as supplied static classifications because classification history is unavailable.
+Populate zero-flow periods only within each client's account lifetime and the dataset coverage. Historical client denominators must reflect accounts open in that period. Do not infer historical daily holdings from current snapshots or by carrying sporadic after-trade GBP balances forward. The one permitted reconstruction is units × price: units derived from after-trade balance ÷ that day's share-class price, held constant between trades and valued at each day's published price. It may be used only by the Segments & stress page, only while its reconciliation check passes (rebuilt holdings summed across clients match reported fund AUM within 0.5% on every day), and must be labelled as reconstructed wherever shown. Client sector/type are treated as supplied static classifications because classification history is unavailable.
 
 ## 4. Dashboard requirements
 
-Provide five pages with clear units, coverage dates, filter state and the latest successful import identifier. Show GBP subscriptions and redemption magnitudes separately, with net flow defined as subscriptions minus redemptions.
+Provide six pages with clear units, coverage dates, filter state and the latest successful import identifier. Show GBP subscriptions and redemption magnitudes separately, with net flow defined as subscriptions minus redemptions.
 
 | Page | Required capabilities |
 | --- | --- |
@@ -68,12 +71,34 @@ Provide five pages with clear units, coverage dates, filter state and the latest
 | Client behaviour | Sector/type comparisons, selected-client history, transaction frequency/size, concentration, and weekly/monthly correlation heatmaps |
 | Forecasts | Whole-fund or selected-sector next-month daily and monthly forecasts, subscriptions/redemptions/net flow, error ranges and historical evaluation |
 | Data quality | Source counts, reconciliation results, warnings, coverage and freshness; query performance summary |
+| Segments & stress | Descriptive client-relationship study: client segments, segment behaviour on stress days, whether segments withdraw together, concentration, liquidity stress tests and a segment client query tool. Not a forecast (see below) |
 
-Historical analysis filters: date range, sector, client type, client and trade/cash date basis where meaningful. Fund AUM remains explicitly fund-wide when client filters are active; do not imply segment AUM history exists. Forecasts support fund/sector selection and a displayed cutoff, but not arbitrary client filters or trade-date forecasts.
+Historical analysis filters: date range, sector, client type, client and trade/cash date basis where meaningful. Fund AUM remains explicitly fund-wide when client filters are active; do not imply segment AUM history exists, except for the labelled units × price reconstruction on the Segments & stress page (see *Correctness rules*). Forecasts support fund/sector selection and a displayed cutoff, but not arbitrary client filters or trade-date forecasts.
 
 Correlations default to monthly signed net flows and allow weekly frequency and separate subscriptions/redemptions. Restrict heatmaps to at most 50 explicitly selected clients. Use pairwise overlapping open-account periods including genuine zero-flow periods; require at least 12 monthly or 26 weekly observations. Display insufficient overlap or constant series as unavailable, not zero correlation. Show overlap counts and state that correlation does not establish causation.
 
 Exports provide the displayed aggregate/forecast table as CSV. Empty selections, insufficient history and unavailable metrics produce explanatory messages rather than blank or misleading charts.
+
+### Segments & stress page
+
+**Purpose: relationships, not forecasts.** The clustering (k-means client segments), segment flow correlation and stress tests are descriptive tools for the fund manager to see *potential relationships between clients*: which clients behave alike, whether groups of clients tend to withdraw at the same time, how concentrated holdings are, and how far a cash buffer would stretch if the largest clients left. They are **not forecasting methods**:
+
+- They do not predict future flows, do not feed or adjust the Forecasts page, and are not evaluated as forecasts. Segment features did not improve forecast accuracy in earlier testing, so the largest clients should be reviewed individually.
+- Segments are assigned using each client's full history, so they use hindsight and must never be used as forecast or backtest inputs.
+- Correlation shows co-movement, not causation, and is not a probability that clients will act together.
+- Stress scenarios are illustrative "what if" exposures, not probabilities or expected outcomes. There are no portfolio holdings, so cash buffers are illustrative. MMF liquidity floors are shown for reference only because this fund is not a money market fund.
+
+The page states this in one visible line at the top ("Descriptive analysis of relationships between clients, not a forecast.") and repeats the relevant caveat beside each segment, correlation and stress result. Wording on the page avoids forecasting language ("will", "predicted", "expected outflow"); use "historically", "in past stress periods", "if … then".
+
+**Matches the existing UI.** The page is a sixth entry in the existing sidebar `Workspace` radio and reuses the dashboard's look rather than the study's original vanilla-JS interface:
+
+- Same page frame: the eyebrow line, `st.title`, sidebar caption and the existing CSS block; no new fonts, stylesheets, custom HTML widgets or JavaScript components. The light theme in `.streamlit/config.toml` applies unchanged.
+- In-page sections use the same controls as other pages (`st.segmented_control` or horizontal `st.radio`), not a different tab style. Headings use `st.subheader`; caveats use `st.caption`; empty or unavailable states use `st.info`; detail tables sit in `st.expander` with the shared `table_export` CSV download.
+- Headline numbers use `st.metric` cards; money uses the shared `money()` formatter.
+- Every chart goes through the shared `chart()` helper (Plotly, `plotly_white`, Inter, existing axis/grid colours, unified hover). Axis titles carry units; legends appear for two or more series.
+- Colours: keep the existing meanings of `#16877c` subscriptions, `#d26b45` redemptions and `#5773b7` net flow/AUM. Each segment gets one fixed colour used everywhere on the page, chosen to sit with that palette without reusing those three; "Rare traders" is always grey. Covered/shortfall in stress tests use the app's teal and orange-red with text labels, so meaning never depends on colour alone.
+- The sidebar date, sector, client and date-basis filters are hidden on this page (as on Forecasts) because the study uses one fixed definition; the page states its data cutoff instead.
+- Data is precomputed offline by a command (as with monthly forecasts), stored under `data/clean`, tied to the source fingerprint and loaded only when the page opens. Interactive recomputation (editable stress periods) must stay within the existing two-second warm-update target.
 
 ## 5. Forecasting specification
 
@@ -166,6 +191,7 @@ Acceptance checks must cover:
 - Correlation overlap thresholds, constant series, empty selections and population denominators.
 - Forecast cutoff isolation, repeatability, nonnegative amount predictions, complete target dates, fund/sector coherence, correct monthly uncertainty calculation and frozen held-out model selection.
 - Dashboard navigation, filters, exports, clear unavailable states and measured performance on supplied data.
+- Segments & stress: pipeline data checks pass (including the units × price reconciliation); the interactive stress engine matches the offline analysis; the page shows the "not a forecast" statement; no NaN/undefined/Infinity text; no forecast output changes when the page is added.
 
 Use focused automated checks for data and forecasting invariants and a local UI smoke check. A reproducible setup guide must document dependency installation, database import, forecast generation and dashboard launch. Pin resolved dependencies during implementation.
 
@@ -176,6 +202,7 @@ Use focused automated checks for data and forecasting invariants and a local UI 
 3. Forecasting: candidate methods, rolling evaluation, coherent outputs and persisted results.
 4. Dashboard: the five views, exports, cache invalidation and forecast/error presentation.
 5. Integration: acceptance checks, performance report, setup documentation and known limitations.
+6. Segments & stress: port the client-relationship study (`handoff/segments_stress/`) as a sixth page in the existing style, with its offline data command and tests.
 
 The coordinating agent owns shared contracts and integration. Once schema and query contracts are fixed, delegate bounded work to database, analytics/forecasting and dashboard subagents. Assign separate files/modules, agree output contracts before parallel edits, and review integrated changes centrally. Subagent use is authorised for implementation; deployment here means assigning development work, not publishing a hosted service.
 

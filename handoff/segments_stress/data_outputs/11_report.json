@@ -1,0 +1,25 @@
+{
+  "config": "Charity fund (synthetic, 2006\u20132026)",
+  "fund_type": "Non-MMF (price-variable)",
+  "stress_definition": "fund accumulation price \u226510% below its trailing one-year high, plus named market episodes",
+  "stress_days": 781,
+  "k": 7,
+  "ari_median": 0.7242731846468782,
+  "ari_p10": 0.671892468023362,
+  "checks_passed": true,
+  "base": {
+    "aum": 3000000006.93,
+    "date": "2026-10-30",
+    "known_payables": 11909421.12,
+    "payable_columns": {
+      "income_distributions_payable_gbp": 11909421.12,
+      "redemptions_awaiting_payment_gbp": -0.0
+    },
+    "scheduled_distributions_after_date": 11909421.120000001
+  },
+  "unit_check": {
+    "median_abs_unit_error": 0.00023285435378284092,
+    "p99_abs_unit_error": 0.0015738798340059646,
+    "max_relative_error": 0.002568889830167869
+  }
+}
