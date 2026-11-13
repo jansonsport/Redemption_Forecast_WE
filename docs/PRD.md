@@ -102,6 +102,8 @@ The page states this in one visible line at the top ("Descriptive analysis of re
 
 ## 5. Forecasting specification
 
+The initial daily specification is retained below for reproducibility. Current dashboard behavior is defined by **Unified dashboard adoption** and **Monthly comparison: history-selected models** later in this section.
+
 ### Targets and candidate methods
 
 Forecast daily cash subscriptions and redemption magnitudes separately for each sector. Sum sector predictions to produce coherent fund totals, then derive net flow. Evaluate direct fund forecasts as a benchmark, but do not substitute them for coherent dashboard totals in v1.
@@ -127,38 +129,56 @@ Evaluate training windows of 12, 36 and 60 months where available. For Ridge, st
 
 Avoid leakage from current client AUM, future transactions and future-known distribution schedules. Scheduled declared distributions may be displayed separately in the current outlook. Do not include them as historically known obligations in backtests because declaration availability timestamps are absent.
 
-### Next extension: constrained random forest and monthly horizons
+### Daily history-window experiment
 
-This section specifies the monthly experiment. The daily next-month forecasting specification above documents the existing approach; the long-range extension uses the monthly evaluation rules below.
+This separate retrospective experiment extends daily next-month testing to the supplied history. Its split supersedes the original 36-month evaluation rule only for this experiment. Compare direct whole-fund subscriptions and redemptions; dashboard adoption and sector expansion require later review.
 
-#### Architecture and model inputs
+- Compare Ridge and constrained random forest under three approaches: 60-month rolling history with equal weights; expanding history with equal weights; expanding history with exponential recency weights. Use all observations available before each forecast, beginning November 2006 for expanding models.
+- Reserve November 2006–October 2011 for initial training, November 2011–October 2013 for chronological validation, and November 2013–September 2026 for evaluation (155 monthly origins). Derive these boundaries from the first 60 complete months, next 24 months, and remaining complete months. Exclude incomplete October 2026. Refit at every month boundary using only earlier observations; require complete, unique daily coverage and finite nonnegative targets.
+- Retain current calendar features, training-only trend scaling, and nonnegative predictions. Independently select settings per target/model/approach using validation daily MAE, then monthly-total MAE, then candidate order. Freeze settings during evaluation. Do not reuse settings selected on later historical periods.
+- Ridge alpha candidates: 0.1, 1, 10. Forest depth/leaf candidates: (3,6), (3,12), (5,12), (5,24), with 200 trees and seed 42. Weighted candidates use half-lives of 1, 3, 5 years, considered in that order before model parameters. Weight each training day by `2 ** (-age_days / (365.25 * half_life_years))`, measured from the fitting cutoff, and normalize weights to mean 1 to preserve Ridge's relative regularization scale.
+- Evaluate all six model/approach combinations and 12-month mean and weekday benchmarks on identical dates. Report overall and yearly daily MAE, monthly-total MAE, signed daily bias, benchmark improvements, and daily MAE divided by mean actual daily flow (equivalently total absolute error divided by total actual flow). Zero-denominator percentages are unavailable. Report paired differences between history approaches for each model and target.
+- Run offline with `python -m fund_analytics history-window-backtest`; save predictions, monthly totals, metrics, paired comparisons, selected settings, exact training/split dates, source fingerprint, feature version, library version and runtime under `data/clean/history_window_backtest/`. Preserve the current forecast outputs.
+- Publish a results document and a dated development-briefing update. These synthetic-data results are retrospective: portions of later history have already been examined. This experiment evaluates point forecasts; it does not recalibrate uncertainty ranges or extend monthly-horizon forecasts. Do not change the dashboard's active model automatically.
 
-- Retain the existing pipeline: DuckDB aggregates → offline forecasting → saved predictions and metrics → Streamlit. Scikit-learn is already a dependency; no new database service is required.
-- Build complete monthly sector histories from cash-date aggregates, excluding incomplete months from training targets. Preserve source provenance and distinguish zero activity from missing coverage.
-- Forecast monthly subscription and redemption amounts separately per sector, for lead months 1–12. Sum sector predictions for coherent whole-fund totals and derive net flow by subtraction. Direct fund models remain benchmarks.
-- Build features from target calendar month, lead month, prior monthly flows and trailing averages. Every historical feature must be available at its forecast cutoff. Current valuation snapshots, future actual flows and later-known distribution schedules are excluded.
-- Use direct prediction for each lead month rather than feeding earlier predictions back as observations. A training example is eligible only when its target outcome is available by the fitting cutoff.
-- Start random forest experiments with 200 trees, maximum depth 3 or 5, minimum samples per leaf 6 or 12, and a fixed random seed. Select settings through chronological validation; record the seed, training window and complete configuration. Limited monthly sample counts constrain model complexity.
-- Implementation defaults: a shared direct model learns all twelve leads using lead month as an input, separately for each sector and direction. Fit examples from at most 120 prior origin months, retaining only outcomes known at the fitting cutoff. Choose one forest configuration by validation MAE averaged across monthly leads 1–12.
+Results recorded 11 November 2026: expanding forests lead on daily MAE (subscriptions £642k, redemptions £625k), while rolling Ridge leads subscription monthly-total MAE (£5.72m) and weighted Ridge leads redemption monthly-total MAE (£4.84m, only slightly below rolling Ridge). Recency weighting does not consistently improve forecasts. Review [history-window results](history_window_results.md) before adoption; this experiment leaves the current dashboard model in place.
 
-#### Baselines and backtesting
+The follow-up diagnostic calibrates central empirical 80% intervals from November 2013–October 2015 and evaluates November 2015–September 2026 separately for daily values and monthly totals. Coverage was 64–70% daily and 32–52% monthly, below nominal for every approach. The monthly calibration has only 24 cases. These ranges are diagnostic and not reliable probability claims. Details: [history-window interval results](history_window_intervals.md).
 
-- Retain recent averages, weekday averages and Ridge regression as comparison methods. Aggregate their daily predictions to the same monthly targets used for random forest. Include the corresponding month's actual total from the previous year as a seasonal baseline.
-- Compare every method on identical historical cutoffs and target months, covering forecast origins across all calendar months. Report monthly errors separately for lead months 1–12, plus six- and twelve-month cumulative-total errors calculated from complete forecast paths.
-- Select model settings using earlier validation forecasts scored on monthly errors at the relevant horizon. Daily one-month errors must not determine long-range model selection. Keep later evaluation outcomes out of tuning and feature construction.
-- Report monthly MAE in GBP, signed bias, improvement relative to the seasonal baseline, sample counts, performance across historical periods and errors relative to typical flow sizes. Report zero-denominator metrics as unavailable.
-- Identify overlapping forecast windows and their dependence; repeated target months are not independent observations. Previously reviewed backtests are retrospective evidence and must not be described as untouched tests.
-- Use 12 monthly validation origins, then 12 monthly calibration origins, then 24 monthly evaluation origins. Leave sufficient gaps so that every twelve-month validation outcome is known before calibration starts and every calibration outcome is known before evaluation starts. Save exact boundaries in metadata. Twelve calibration cases per lead provide imprecise empirical intervals; report that limitation.
-- The existing long-range experiment is preliminary: it compares a reduced candidate set, selects using daily one-month errors and spaces origins six months apart. Its poorer performance versus the seasonal baseline does not establish an absolute useful-horizon limit.
-- Calibrate uncertainty separately by lead month using out-of-sample errors; evaluate interval coverage and width on later periods. Tree-to-tree variation alone is not a calibrated prediction interval. Aggregate residuals before deriving fund, net-flow or cumulative-total ranges.
+### Fund-performance feature experiment
 
-#### Outputs, dashboard and release criteria
+Compare calendar-only controls with calendar plus trailing 5-, 21-, and 63-valuation-day accumulation-price returns. Freeze returns at the preceding calendar month-end for every daily forecast and training target in its month; use only valuations available by that cutoff. Do not substitute within-month realized performance. Validate unique dated, finite positive prices. Omit early training months lacking 64 price observations from both arms; forecast origins with insufficient history fail explicitly. Scale added Ridge features using training-only statistics.
 
-- Keep training offline through the command-line workflow. Cache reusable data preparation; save run duration, source fingerprint, feature version, model settings, cutoff, target month and lead month with predictions and metrics.
-- Generate the experiment with `python -m fund_analytics monthly-forecast`; publish artifacts separately under `data/clean/monthly_forecasts`. The outlook starts after the latest complete month. Partial later observations remain available to the daily pipeline but are not silently treated as complete monthly totals.
-- Preserve existing next-month views. After backtest review, add six- and twelve-month views using monthly points, forecast ranges, model/baseline comparisons and downloadable values. Clearly label insufficient history and weak predictive evidence.
-- Recommend useful horizons from observed error, baseline improvement and stability by sector and target. Do not assume random forest wins or promise narrower ranges. Confirm model adoption and horizon presentation after reviewing results.
-- Verify feature/cutoff isolation, eligible training targets, complete monthly targets, repeatability, nonnegative amount forecasts, sector-to-fund coherence and matching evaluation cases across methods. Measure runtime before widening tuning grids.
+Use four previously reviewed configurations without retuning: expanding 200-tree forests (depth 5, leaf 12 subscriptions / leaf 24 redemptions, seed 42); rolling 60-month Ridge alpha 0.1 for subscriptions; expanding Ridge alpha 0.1 with one-year, mean-one recency weighting for redemptions. Evaluate November 2013–September 2026 (155 months) and separately November 2015–September 2026 (131 months). Calibrate each arm's daily and monthly-total 80% residual ranges independently on November 2013–October 2015; assess coverage only afterward. Compare matched controls, original history-experiment references and simple mean/weekday benchmarks on identical forecast dates. Report overall/yearly errors, bias, normalized error, paired changes, coverage and width. This is retrospective synthetic-data research; prior reviewed winners were chosen with knowledge of later performance.
+
+Run `python -m fund_analytics performance-backtest`; save separate artifacts under `data/clean/performance_backtest/`, including predictions, performance-feature cutoffs, training eligibility, frozen configurations, interval diagnostics and source/feature versions. Publish findings in a results document and dated briefing update before any dashboard model adoption.
+
+Performance experiment result (11 November 2026): the subscription forest's daily MAE improves only 0.47% against its matched control; redemption forest daily MAE is essentially unchanged and Ridge daily MAEs worsen slightly. Weighted Ridge redemption monthly-total MAE improves about 0.96%; other monthly totals worsen. Added features do not fix interval undercoverage. Do not adopt as a general improvement; see [performance-feature results](performance_forecast_results.md).
+
+### Unified dashboard adoption
+
+Following user review on 11 November 2026, Forecasts contains one **Monthly model comparison** workspace with **Daily next month** and **Monthly** resolution controls. Remove legacy and separate selected-model views. Keep the best Random Forest and best Ridge available, rather than choosing two configurations from the same family. Fund-performance features are excluded.
+
+Daily scope is whole-fund cash flows. Use reviewed history-window daily MAE (monthly-total MAE and fixed history order break ties) to select the best history within each family/flow. Current daily winners are expanding forests, 200 trees, depth 5, seed 42, leaf 12 subscriptions / 24 redemptions, and rolling 60-month Ridge alpha 0.1 for both flows. `selected-forecast` publishes `selected-history-v2` model-specific daily outlooks, metrics, settings and net-flow ranges. Forecast the month following the latest cutoff; include observed partial-month history without inventing missing tail observations. Weekly points sum only days inside the forecast month, with partial boundary weeks labeled and no weekly ranges.
+
+### Monthly comparison: history-selected models
+
+#### Training and selection
+
+- Preserve daily cash-flow aggregation, complete monthly targets, monthly forest features (lead, target-month seasonality, prior two monthly totals, trailing 3/12-month means, same month last year), calendar Ridge features and training-only trend scaling.
+- Compare rolling 60-month, expanding and recency-weighted expanding history within both model families. Weighted half-lives: 1, 3, 5 years. Forest grid: depth 3/5, leaf 6/12, 200 trees, seed 42. Ridge alpha: 0.1, 1, 10. Clip negative amount predictions to zero.
+- Each forest example's target must be known at the fitting cutoff. Rolling forests use the most recent 60 eligible target months; older observations may supply feature lookbacks. Expanding forests use all eligible examples. Weight forest examples by target-month age (`2 ** (-age_months/(12*half_life_years))`), normalized to mean one. Ridge uses training-day age and existing mean-one recency weights.
+- Select separately for each family, subscription/redemption target, sector/direct-fund scope, and horizon 1/6/12. Rank validation cumulative-total MAE, then mean monthly MAE, then deterministic candidate order (rolling, expanding, weighted; half-life ascending; grid order). Freeze configurations before calibration/evaluation, then refit at each origin using available history only.
+- Preserve twelve validation origins, twelve calibration origins and twenty-four evaluation origins, with sufficient gaps for all twelve-month targets to be observed before the following phase. Save exact dates. Shared outcomes across leads and overlapping evaluation paths are dependent.
+
+#### Evaluation, aggregation and display
+
+- Score all families and seasonal/mean/weekday benchmarks on identical origins and targets. Report individual monthly and cumulative-total errors, bias, normalized MAE, seasonal skill, interval coverage and width. Report zero-denominator ratios as unavailable.
+- Preserve whole-fund and sector monthly forecasts. Whole-fund displayed paths sum independently selected sector paths; direct fund models are separate artifact comparisons. Derive net actuals/predictions before calibration. Net component settings are selected for subscription/redemption accuracy, not independently optimized for net error.
+- Calibrate ranges separately by scope, target, family, selected horizon and lead; calculate cumulative bounds from cumulative residuals. Twelve calibration cases per lead are imprecise. Hide ranges by default; display measured coverage and sample limitations when enabled.
+- Display family names and actual selected history/settings; do not relabel rolling models as expanding. Make one/six/twelve-month horizon choices explicit. Monthly outlooks start after the latest complete month, with later partial observations excluded, while daily outlooks use their later cutoff.
+- `monthly-forecast` publishes `monthly-history-v2` under `data/clean/monthly_forecasts/`. Save candidate scores, configurations, source fingerprint, splits, runtime and version. Preserve original metrics/configurations/metadata as `previous_*` references on the same historical cases. Use two bounded offline workers and cache shared training examples/prediction paths. Refuse stale artifact formats or mismatched source imports instead of silently relabeling results.
+- Update the README, dated development briefing and results report with actual outcomes, even if expanding models lose. Reviewed synthetic-data results do not establish prospective accuracy or real investor behavior.
 
 ## 6. Performance and acceptance checks
 

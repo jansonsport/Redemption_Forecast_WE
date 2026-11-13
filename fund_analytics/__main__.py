@@ -5,7 +5,7 @@ import json
 
 def main():
     parser = argparse.ArgumentParser(description='Fund flow analytics pipeline')
-    parser.add_argument('command', choices=['ingest', 'forecast', 'horizon-backtest', 'monthly-forecast', 'daily-forest-backtest', 'segments', 'benchmark'])
+    parser.add_argument('command', choices=['ingest', 'forecast', 'horizon-backtest', 'monthly-forecast', 'daily-forest-backtest', 'history-window-backtest', 'history-window-intervals', 'performance-backtest', 'selected-forecast', 'segments', 'benchmark'])
     args = parser.parse_args()
     if args.command == 'ingest':
         from .db import ingest
@@ -21,6 +21,19 @@ def main():
         from .monthly_forecast import run
         result = run()
         print(json.dumps(result['metadata'], indent=2))
+    elif args.command == 'selected-forecast':
+        from .selected_forecasts import run
+        print(run()['models'].to_string(index=False))
+    elif args.command == 'performance-backtest':
+        from .performance_backtest import run
+        print(run()['comparisons'].query("period == 'overall'").to_string(index=False))
+    elif args.command == 'history-window-intervals':
+        from .history_intervals import run
+        result = run()
+        print(result['metrics'].to_string(index=False))
+    elif args.command == 'history-window-backtest':
+        from .history_backtest import run
+        print(run()['metrics'].to_string(index=False))
     elif args.command == 'daily-forest-backtest':
         from .forecast import run_daily_forest_backtest
         summary, _, models = run_daily_forest_backtest()

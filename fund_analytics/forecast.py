@@ -27,7 +27,7 @@ TARGETS = ('subscriptions', 'redemptions')
 @dataclass(frozen=True)
 class Spec:
     method: str
-    window: int
+    window: int | None
     alpha: float = 1.0
 
 
@@ -46,14 +46,36 @@ def features(dates, origin, trend_mean=0.0, trend_std=1.0):
     return np.column_stack([weekday, month, bucket, (trend - trend_mean) / trend_std])
 
 
-def predict(series, dates, cutoff, spec):
+def training_slice(series, cutoff, window):
+    """Select an expanding history (None) or a fixed number of calendar months."""
+    cutoff = pd.Timestamp(cutoff)
+    if window is not None and window <= 0:
+        raise ValueError('Training window must be positive')
+    start = series.index.min() if window is None else cutoff + pd.Timedelta(days=1) - pd.DateOffset(months=window)
+    return series.loc[(series.index >= start) & (series.index <= cutoff)]
+
+
+def recency_weights(dates, cutoff, half_life_years=None):
+    """Mean-one exponential weights preserve Ridge alpha's relative scale."""
+    if half_life_years is None:
+        return None
+    if not np.isfinite(half_life_years) or half_life_years <= 0:
+        raise ValueError('Half-life must be finite and positive')
+    ages = np.asarray((pd.Timestamp(cutoff) - pd.DatetimeIndex(dates)).days, dtype=float)
+    if np.any(ages < 0):
+        raise ValueError('Training dates must not exceed cutoff')
+    weights = np.exp2(-ages / (365.25 * half_life_years))
+    return weights / weights.mean()
+
+
+def predict(series, dates, cutoff, spec, half_life_years=None):
     """Fit only observations on/before cutoff; return prediction and fit status."""
     cutoff = pd.Timestamp(cutoff)
-    start = cutoff + pd.Timedelta(days=1) - pd.DateOffset(months=spec.window)
-    train = series.loc[(series.index >= start) & (series.index <= cutoff)]
+    train = training_slice(series, cutoff, spec.window)
     if train.empty:
         raise ValueError('No observations before forecast cutoff')
-    status = 'ok' if train.index.min() <= cutoff - pd.DateOffset(months=12) + pd.Timedelta(days=1) else 'insufficient_history'
+    weights = recency_weights(train.index, cutoff, half_life_years)
+    status = 'ok' if train.index.min() <= cutoff + pd.Timedelta(days=1) - pd.DateOffset(months=12) else 'insufficient_history'
     if not np.any(train.to_numpy()):
         return np.zeros(len(dates)), 'all_zero_history'
     weekday_means = train.groupby(train.index.day_of_week).mean()
@@ -68,7 +90,8 @@ def predict(series, dates, cutoff, spec):
         mean, std = trend.mean(), max(trend.std(), 1.0)
         try:
             model = Ridge(alpha=spec.alpha)
-            model.fit(features(train.index, origin, mean, std), train.to_numpy())
+            model.fit(features(train.index, origin, mean, std), train.to_numpy(),
+                      sample_weight=weights)
             pred = model.predict(features(dates, origin, mean, std))
             if not np.isfinite(pred).all():
                 raise ValueError('Nonfinite model output')
@@ -79,13 +102,13 @@ def predict(series, dates, cutoff, spec):
     return np.maximum(pred, 0.0), status
 
 
-def predict_forest(series, dates, cutoff, window, depth, leaf):
+def predict_forest(series, dates, cutoff, window, depth, leaf, half_life_years=None):
     """Constrained calendar-feature forest for the daily whole-fund test."""
     cutoff = pd.Timestamp(cutoff)
-    start = cutoff + pd.Timedelta(days=1) - pd.DateOffset(months=window)
-    train = series.loc[(series.index >= start) & (series.index <= cutoff)]
+    train = training_slice(series, cutoff, window)
     if train.empty:
         raise ValueError('No observations before forecast cutoff')
+    weights = recency_weights(train.index, cutoff, half_life_years)
     if not np.any(train.to_numpy()):
         return np.zeros(len(dates))
     origin = train.index.min()
@@ -93,7 +116,8 @@ def predict_forest(series, dates, cutoff, window, depth, leaf):
     mean,std = trend.mean(),max(trend.std(),1.)
     model = RandomForestRegressor(n_estimators=200,max_depth=depth,
         min_samples_leaf=leaf,random_state=42,n_jobs=1)
-    model.fit(features(train.index,origin,mean,std),train.to_numpy())
+    model.fit(features(train.index,origin,mean,std),train.to_numpy(),
+              sample_weight=weights)
     return np.maximum(model.predict(features(dates,origin,mean,std)),0.)
 
 

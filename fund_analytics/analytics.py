@@ -188,6 +188,11 @@ def sector_history(con=None, by_sector=True):
     return _query('SELECT date, sum(subscriptions) subscriptions, sum(redemptions) redemptions FROM daily_sector GROUP BY 1 ORDER BY 1', con=con)
 
 
+def unit_prices(con=None):
+    """Daily accumulation unit price, the fund-return input for the performance backtest."""
+    return _query('SELECT date, accumulation_unit_price_gbp price FROM fund_daily ORDER BY date', con=con)
+
+
 def load_tables(names, con=None):
     """Whole typed source tables, ordered by primary key."""
     unknown = set(names) - set(db.KEYS)

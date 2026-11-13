@@ -16,6 +16,15 @@ class SingleSourceTests(unittest.TestCase):
                 for number, line in enumerate(path.read_text().splitlines(), 1) if FORBIDDEN.search(line)]
         self.assertEqual(hits, [])
 
+    def test_shared_queries_only_in_data_layer(self):
+        shared = {ROOT / 'fund_analytics' / name for name in ('db.py', 'analytics.py', 'benchmark.py')}
+        files = sorted((ROOT / 'fund_analytics').rglob('*.py')) + [ROOT / 'app.py', ROOT / 'segments_page.py']
+        hits = [f'{path.relative_to(ROOT)}:{number}: {line.strip()}' for path in files if path not in shared
+                for number, line in enumerate(path.read_text().splitlines(), 1)
+                if re.search(r'FROM\s+(daily_sector|ingestion_runs)\b|\.execute\(', line)
+                and 'benchmark.QUERIES' not in line]  # the timing button runs the fixed benchmark SQL on purpose
+        self.assertEqual(hits, [], 'query the database through fund_analytics.analytics / db')
+
     def test_guard_catches_raw_reads(self):
         for line in ("pd.read_csv(ROOT / 'data/raw/x.csv')", 'from .db import RAW_DIR', 'for f in db.FILES.values():',
                      "duckdb.connect('data/clean/fund_analytics.duckdb')", "pd.read_csv('synthetic_clients.csv')"):

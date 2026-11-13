@@ -119,3 +119,46 @@ Potential additions for discussion: median absolute error for robustness to spik
 - Generate daily forecast: `venv/bin/python -m fund_analytics forecast`
 - Compare daily next-month forest: `venv/bin/python -m fund_analytics daily-forest-backtest`
 - Generate monthly comparison: `venv/bin/python -m fund_analytics monthly-forecast`
+
+
+## 11 November 2026: training-history extension
+
+Implemented and ran the [daily training-history comparison](history_window_results.md): Ridge and random forest under five-year rolling, expanding, and recency-weighted expanding histories. Validation covers November 2011–October 2013; evaluation covers November 2013–September 2026 (155 months, 4,717 days per method/target). Settings are chosen before evaluation; both simple benchmarks use identical scored dates.
+
+Expanding forests have the lowest daily MAE: £642k subscriptions and £625k redemptions, improving on the weekday benchmark by 23.6% and 22.0%. However, monthly-total MAE favors rolling Ridge for subscriptions (£5.72m) and weighted expanding Ridge for redemptions (£4.84m). The latter improvement over rolling Ridge (£4.87m) is small. Weighting does not consistently beat unweighted approaches. Forest daily errors remain about 76–82% of mean actual daily flows; expanding forests also underpredict on average.
+
+Recommendation: treat expanding forest as a daily-error challenger and retain Ridge as the stronger monthly-total candidate. Review yearly stability and future observations before dashboard adoption. This synthetic-data retrospective experiment does not recalibrate ranges or establish real-world readiness. Full results, selected settings and yearly comparisons are linked above. All 23 tests passed; matching dates, 155-month coverage and prediction validity were checked for all sixteen evaluation groups. Runtime was about 8.3 minutes.
+
+Run: `venv/bin/python -m fund_analytics history-window-backtest`. Artifacts: `data/clean/history_window_backtest/`. The dashboard's current model remains unchanged.
+
+
+## 11 November 2026: daily forecast range diagnostic
+
+Calibrated central 80% empirical ranges from November 2013–October 2015 residuals, then evaluated on November 2015–September 2026. Coverage was only 64–70% for daily flows and 32–52% for monthly totals across the tested Ridge and forest history approaches. None reached the nominal 80%. Monthly bounds use 24 calibration totals per model/target and are particularly uncertain. These ranges should be treated as diagnostics, not dependable 80% probabilities. See [interval results](history_window_intervals.md). Reproduce from saved predictions with `venv/bin/python -m fund_analytics history-window-intervals`.
+
+
+## 11 November 2026: fund performance features
+
+Implemented and ran a matched calendar/performance comparison for the four leading model configurations, using prior-month-end trailing 5/21/63-valuation-day accumulation-price returns. Both feature arms use eligible training observations from March 2007 onward. See [performance-feature results](performance_forecast_results.md).
+
+Across 155 months, subscription forest daily MAE improves only 0.47% versus its matched control (£646k to £643k); redemption forest daily error is essentially unchanged and both Ridge daily errors worsen slightly. Weighted Ridge redemption monthly-total MAE improves about 0.96%; other monthly totals worsen. Daily range coverage remains around 66–69% with performance features; monthly coverage is about 35–53%, below nominal 80%. The evidence does not support adopting these features as a general improvement. These are retrospective synthetic-data results with configurations chosen from previously reviewed outcomes.
+
+Run: `venv/bin/python -m fund_analytics performance-backtest`. Outputs: `data/clean/performance_backtest/`. Full runtime was about 5.2 minutes; all 29 tests passed, and scoring dates, paired training eligibility and interval splits were checked. Review the results before any further feature search or model adoption.
+
+
+## 11 November 2026: selected dashboard forecasts
+
+At the user's request, added the original history-window winners as the default **Forecasts → Selected whole-fund forecast** view. Daily patterns use expanding random forests; monthly totals use rolling Ridge subscriptions and recency-weighted expanding Ridge redemptions. The interface names the model, explains why monthly totals differ from summed daily forecasts, and supports net flow computed separately for each objective. No fund-performance features were added.
+
+The outlook uses observed data through 30 October 2026 to forecast November. Diagnostic ranges are hidden by default, with measured coverage and calibration sample counts shown when enabled. Weekly display sums daily point forecasts only and labels potentially partial boundary weeks. Sector/legacy and six/twelve-month research workspaces remain accessible. Refresh with `venv/bin/python -m fund_analytics selected-forecast`; saved artifacts include source, cutoff, settings and historical metrics under `data/clean/selected_forecasts/`.
+
+All 31 tests passed, including selected-model mapping, independent monthly aggregation, negative net bounds, aggregate calibration and stale-cutoff rejection. Streamlit application checks passed for daily, weekly, net, monthly, range diagnostics, legacy sector forecasts and long-range research views.
+
+
+## 11 November 2026: unified daily and monthly model comparison
+
+Replaced the legacy and separate selected forecast views with one **Monthly model comparison** workspace. Daily next-month resolution now compares the best Random Forest and Ridge within each family: expanding forests and rolling 60-month Ridge, using the original calendar-only experiment. Monthly resolution compares newly selected histories and configurations for horizons 1/6/12, with sector and coherent whole-fund paths, net-flow targets and simple benchmark overlays. Scheduled whole-fund distributions remain separate obligations in an expander.
+
+The new monthly run selects by validation cumulative-total MAE from rolling, expanding and weighted histories. Six-month subscription Ridge totals improve about 16% on the seasonal benchmark; twelve-month redemption Ridge totals improve about 6%. Other outcomes are mixed: twelve-month subscription errors and six-month redemption errors exceed seasonal errors for both families. The UI shows real history choices and historical errors rather than claiming all expanding models win. Ranges remain optional diagnostics with observed coverage.
+
+See [unified forecast results](monthly_history_results.md) for all scores, previous-model comparisons, configurations and limitations. Monthly generation took about 15.4 minutes with two bounded workers. All 36 tests passed; selected configurations, full-run aggregation and dashboard interactions were checked. Refresh with `selected-forecast` and `monthly-forecast`; older comparison metrics remain as `previous_*` reference artifacts. This update supersedes the earlier separate-view adoption note.
