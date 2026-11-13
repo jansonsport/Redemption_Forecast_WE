@@ -76,13 +76,23 @@ class DatabaseTests(unittest.TestCase):
         self.assertTrue((frame['subscriptions']>=0).all())
         empty = analytics.daily_flows(start='2026-01-01',end='2026-01-31',client_ids=[])
         self.assertEqual(empty['transaction_count'].sum(),0)
-        timing = analytics.timing_patterns(start='2026-01-01',end='2026-01-31')
-        self.assertEqual(timing['observed_days'].sum(),31)
+        active = analytics.active_clients(start='2026-01-01',end='2026-01-31')
+        self.assertEqual(str(active['active_clients'].dtype),'int64')
+        for pattern in analytics.PATTERNS:
+            timing = analytics.timing_summary(frame,active,pattern)
+            self.assertEqual(timing['observations'].sum(),31)
+        groups = analytics.group_summary('type',start='2026-01-01',end='2026-01-31')
+        self.assertEqual(groups['transaction_count'].sum(),frame['transaction_count'].sum())
+        with self.assertRaises(ValueError):
+            analytics.group_summary('client_name')
         corr, overlap, rows = analytics.correlations(['C000001','C000002'])
         self.assertEqual(corr.shape,(2,2))
         self.assertTrue((overlap.values>=0).all())
+        self.assertEqual(list(rows.columns),['period','client_id','amount'])
         with self.assertRaises(ValueError):
             analytics.correlations([])
+        tables = analytics.load_tables(['fund_daily'])
+        self.assertTrue(tables['fund_daily'].date.is_monotonic_increasing)
 
 if __name__ == '__main__':
     unittest.main()
